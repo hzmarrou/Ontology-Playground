@@ -222,7 +222,7 @@ export function SearchFilter() {
                     }}
                   />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 500 }}>{entity.name}</div>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-primary)' }}>{entity.name}</div>
                     <div style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>
                       {entity.properties.length} properties
                     </div>
@@ -250,7 +250,7 @@ export function SearchFilter() {
                 >
                   <div style={{ fontSize: 10 }}>↔</div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 500 }}>{rel.name}</div>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-primary)' }}>{rel.name}</div>
                     <div style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>
                       {rel.from} → {rel.to}
                     </div>
