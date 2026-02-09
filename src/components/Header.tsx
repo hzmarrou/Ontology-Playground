@@ -24,7 +24,7 @@ export function Header({ onHelpClick, onDataSourcesClick, onImportExportClick, o
           <path d="M17 17H24V24H17V17Z" fill="white" opacity="0.5"/>
         </svg>
         <div>
-          <span className="header-title">Ontology Quest</span>
+          <span className="header-title">Ontology Playground</span>
           <span className="header-subtitle">Microsoft Fabric IQ</span>
         </div>
       </div>

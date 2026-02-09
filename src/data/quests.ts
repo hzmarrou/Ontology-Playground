@@ -1,4 +1,4 @@
-// Quest system for Ontology Quest demo
+// Quest system for Ontology Playground demo
 
 export interface Quest {
   id: string;

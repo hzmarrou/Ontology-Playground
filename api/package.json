@@ -1,7 +1,7 @@
 {
   "name": "ontology-quest-api",
   "version": "1.0.0",
-  "description": "Azure Functions API for Ontology Quest",
+  "description": "Azure Functions API for Ontology Playground",
   "scripts": {
     "build": "tsc",
     "start": "func start",

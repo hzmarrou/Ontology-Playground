@@ -1,4 +1,4 @@
-# Ontology Quest ☕
+# Ontology Playground ☕
 
 An interactive demo application showcasing **Microsoft Fabric IQ Ontology** through the fictional "Cosmic Coffee Company" ontology.
 
