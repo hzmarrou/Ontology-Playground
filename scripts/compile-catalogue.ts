@@ -6,7 +6,7 @@
  *
  * Usage: npx tsx scripts/compile-catalogue.ts
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, lstatSync } from 'node:fs';
 import { join, basename, dirname } from 'node:path';
 import { JSDOM } from 'jsdom';
 import { parseRDF } from '../src/lib/rdf/parser.js';
@@ -63,14 +63,25 @@ function validateMetadata(meta: unknown, filePath: string): CatalogueMetadata {
 // Discover ontology directories
 // ------------------------------------------------------------------
 
+// Validate that a directory name is a safe slug (no traversal, no special chars)
+const SAFE_SLUG_RE = /^[a-z0-9][a-z0-9\-_]*[a-z0-9]$|^[a-z0-9]$/;
+
 function discoverOntologyDirs(baseDir: string): string[] {
   const dirs: string[] = [];
   if (!existsSync(baseDir)) return dirs;
   for (const entry of readdirSync(baseDir)) {
     const full = join(baseDir, entry);
-    if (statSync(full).isDirectory()) {
-      dirs.push(full);
+    const stat = lstatSync(full);
+    if (stat.isSymbolicLink()) {
+      console.error(`✘ ${baseDir}/${entry}: symlinks are not allowed in the catalogue`);
+      continue;
     }
+    if (!stat.isDirectory()) continue;
+    if (!SAFE_SLUG_RE.test(entry)) {
+      console.error(`✘ ${baseDir}/${entry}: directory name contains unsafe characters (only lowercase alphanumeric, hyphens, underscores allowed)`);
+      continue;
+    }
+    dirs.push(full);
   }
   return dirs;
 }

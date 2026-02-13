@@ -14,6 +14,32 @@ export type Route =
   | { page: 'catalogue'; ontologyId?: string }
   | { page: 'embed'; ontologyId: string };
 
+/**
+ * Validate and sanitize an ontology ID parsed from the URL hash.
+ * Returns undefined if the ID contains unsafe patterns.
+ *
+ * Allowed: lowercase alphanumeric, hyphens, underscores, forward slashes
+ * (for path-based IDs like "official/cosmic-coffee").
+ * Rejected: path traversal (..), encoded characters (%), empty segments,
+ * leading/trailing slashes, or any other special characters.
+ */
+function sanitizeOntologyId(raw: string): string | undefined {
+  // Reject path traversal
+  if (raw.includes('..')) return undefined;
+  // Reject encoded characters (prevent double-encoding tricks)
+  if (raw.includes('%')) return undefined;
+  // Reject empty segments (e.g. "official//coffee")
+  if (raw.includes('//')) return undefined;
+  // Strip leading/trailing slashes
+  const trimmed = raw.replace(/^\/+|\/+$/g, '');
+  if (trimmed.length === 0) return undefined;
+  // Only allow safe characters: a-z, 0-9, hyphens, underscores, slashes
+  if (!/^[a-z0-9][a-z0-9\-_/]*[a-z0-9]$/.test(trimmed) && !/^[a-z0-9]$/.test(trimmed)) {
+    return undefined;
+  }
+  return trimmed;
+}
+
 /** Parse a hash string (e.g. "#/catalogue/official/cosmic-coffee") into a Route. */
 export function parseHash(hash: string): Route {
   // Strip leading "#" and optional leading "/"
@@ -23,10 +49,14 @@ export function parseHash(hash: string): Route {
   if (segments[0] === 'catalogue') {
     // Everything after "catalogue/" is the ontologyId (may be multi-segment)
     const rest = segments.slice(1);
-    return { page: 'catalogue', ontologyId: rest.length > 0 ? rest.join('/') : undefined };
+    if (rest.length === 0) return { page: 'catalogue' };
+    const id = sanitizeOntologyId(rest.join('/'));
+    return { page: 'catalogue', ontologyId: id };
   }
   if (segments[0] === 'embed' && segments.length > 1) {
-    return { page: 'embed', ontologyId: segments.slice(1).join('/') };
+    const id = sanitizeOntologyId(segments.slice(1).join('/'));
+    if (!id) return { page: 'home' };
+    return { page: 'embed', ontologyId: id };
   }
   return { page: 'home' };
 }
