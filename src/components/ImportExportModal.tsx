@@ -6,6 +6,8 @@ import { serializeToRDF } from '../lib/rdf/serializer';
 import { parseRDF, RDFParseError } from '../lib/rdf/parser';
 import type { Ontology, DataBinding } from '../data/ontology';
 
+const LEGACY_FORMATS_ENABLED = import.meta.env.VITE_ENABLE_LEGACY_FORMATS === 'true';
+
 interface ImportExportModalProps {
   onClose: () => void;
 }
@@ -46,7 +48,7 @@ export function ImportExportModal({ onClose }: ImportExportModalProps) {
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [copied, setCopied] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'json' | 'yaml' | 'csv' | 'rdf'>('json');
+  const [exportFormat, setExportFormat] = useState<'json' | 'yaml' | 'csv' | 'rdf'>('rdf');
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -57,19 +59,20 @@ export function ImportExportModal({ onClose }: ImportExportModalProps) {
       try {
         const content = event.target?.result as string;
         const fileName = file.name.toLowerCase();
-        const isRdf = fileName.endsWith('.rdf') || fileName.endsWith('.owl');
-        const isXml = !isRdf && content.trimStart().startsWith('<?xml') || content.trimStart().startsWith('<rdf:RDF');
+        const trimmed = content.trimStart();
+        const isRdfExt = fileName.endsWith('.rdf') || fileName.endsWith('.owl') || fileName.endsWith('.iq');
+        const isXmlContent = trimmed.startsWith('<?xml') || trimmed.startsWith('<rdf:RDF');
 
         let ontology: Ontology;
         let bindings: DataBinding[] = [];
 
-        if (isRdf || isXml) {
+        if (isRdfExt || isXmlContent) {
           // Parse as RDF/OWL
           const result = parseRDF(content);
           ontology = result.ontology;
           bindings = result.bindings;
-        } else {
-          // Parse as JSON
+        } else if (LEGACY_FORMATS_ENABLED && (fileName.endsWith('.json') || trimmed.startsWith('{'))) {
+          // Parse as JSON (legacy)
           const parsed = JSON.parse(content);
 
           if (!parsed.ontology || !parsed.ontology.entityTypes || !parsed.ontology.relationships) {
@@ -78,11 +81,16 @@ export function ImportExportModal({ onClose }: ImportExportModalProps) {
 
           ontology = parsed.ontology;
           bindings = parsed.bindings || [];
+        } else {
+          const supported = LEGACY_FORMATS_ENABLED
+            ? 'an RDF/OWL (.rdf, .owl, .iq) or JSON (.json)'
+            : 'an RDF/OWL (.rdf, .owl, .iq)';
+          throw new Error(`Unsupported file format: "${file.name}". Please import ${supported} file.`);
         }
 
-        // Basic validation
+        // Fall back to filename (without extension) if no ontology name was parsed
         if (!ontology.name) {
-          throw new Error('Ontology must have a name.');
+          ontology.name = file.name.replace(/\.[^.]+$/, '');
         }
 
         loadOntology(ontology, bindings);
@@ -343,7 +351,7 @@ export function ImportExportModal({ onClose }: ImportExportModalProps) {
             <input 
               ref={fileInputRef}
               type="file" 
-              accept=".json,.rdf,.owl"
+              accept={LEGACY_FORMATS_ENABLED ? '.json,.rdf,.owl,.iq' : '.rdf,.owl,.iq'}
               onChange={handleFileSelect}
               style={{ display: 'none' }}
             />
@@ -361,7 +369,7 @@ export function ImportExportModal({ onClose }: ImportExportModalProps) {
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Import Ontology</div>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-              Drop JSON or RDF/OWL file to browse
+              {LEGACY_FORMATS_ENABLED ? 'Drop JSON or RDF/OWL file here' : 'Drop RDF/OWL (.rdf, .owl, .iq) file here'}
             </div>
           </div>
 
@@ -388,130 +396,134 @@ export function ImportExportModal({ onClose }: ImportExportModalProps) {
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Export Current</div>
             
-            {/* Format Selector */}
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12 }}>
-              <button
-                onClick={() => setExportFormat('json')}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 11,
-                  borderRadius: 'var(--radius-sm)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: exportFormat === 'json' ? 'var(--ms-blue)' : 'var(--bg-secondary)',
-                  color: exportFormat === 'json' ? 'white' : 'var(--text-secondary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4
-                }}
-              >
-                <FileJson size={12} />
-                JSON
-              </button>
-              <button
-                onClick={() => setExportFormat('yaml')}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 11,
-                  borderRadius: 'var(--radius-sm)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: exportFormat === 'yaml' ? 'var(--ms-purple)' : 'var(--bg-secondary)',
-                  color: exportFormat === 'yaml' ? 'white' : 'var(--text-secondary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4
-                }}
-              >
-                <FileText size={12} />
-                YAML
-              </button>
-              <button
-                onClick={() => setExportFormat('csv')}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 11,
-                  borderRadius: 'var(--radius-sm)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: exportFormat === 'csv' ? 'var(--ms-green)' : 'var(--bg-secondary)',
-                  color: exportFormat === 'csv' ? 'white' : 'var(--text-secondary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4
-                }}
-              >
-                <Table size={12} />
-                CSV
-              </button>
-              <button
-                onClick={() => setExportFormat('rdf')}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 11,
-                  borderRadius: 'var(--radius-sm)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: exportFormat === 'rdf' ? '#E74C3C' : 'var(--bg-secondary)',
-                  color: exportFormat === 'rdf' ? 'white' : 'var(--text-secondary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4
-                }}
-                title="RDF/XML format for MS Fabric"
-              >
-                <Share2 size={12} />
-                RDF
-              </button>
-            </div>
+            {/* Format Selector — only shown when legacy formats are enabled */}
+            {LEGACY_FORMATS_ENABLED && (
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12 }}>
+                <button
+                  onClick={() => setExportFormat('json')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 11,
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: exportFormat === 'json' ? 'var(--ms-blue)' : 'var(--bg-secondary)',
+                    color: exportFormat === 'json' ? 'white' : 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <FileJson size={12} />
+                  JSON
+                </button>
+                <button
+                  onClick={() => setExportFormat('yaml')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 11,
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: exportFormat === 'yaml' ? 'var(--ms-purple)' : 'var(--bg-secondary)',
+                    color: exportFormat === 'yaml' ? 'white' : 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <FileText size={12} />
+                  YAML
+                </button>
+                <button
+                  onClick={() => setExportFormat('csv')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 11,
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: exportFormat === 'csv' ? 'var(--ms-green)' : 'var(--bg-secondary)',
+                    color: exportFormat === 'csv' ? 'white' : 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <Table size={12} />
+                  CSV
+                </button>
+                <button
+                  onClick={() => setExportFormat('rdf')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 11,
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: exportFormat === 'rdf' ? '#E74C3C' : 'var(--bg-secondary)',
+                    color: exportFormat === 'rdf' ? 'white' : 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                  title="RDF/XML format for MS Fabric"
+                >
+                  <Share2 size={12} />
+                  RDF
+                </button>
+              </div>
+            )}
             
             <button 
               className="btn btn-primary"
               onClick={handleExport}
               style={{ width: '100%' }}
             >
-              Download .{exportFormat}
+              {LEGACY_FORMATS_ENABLED ? `Download .${exportFormat}` : 'Download RDF/OWL'}
             </button>
           </div>
         </div>
 
-        {/* Schema Reference */}
-        <div>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            marginBottom: 12 
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <FileJson size={16} color="var(--text-tertiary)" />
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                JSON Schema Reference
-              </span>
+        {/* Schema Reference — only shown when legacy JSON format is enabled */}
+        {LEGACY_FORMATS_ENABLED && (
+          <div>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: 12 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FileJson size={16} color="var(--text-tertiary)" />
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  JSON Schema Reference
+                </span>
+              </div>
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '4px 10px', fontSize: 12 }}
+                onClick={handleCopySchema}
+              >
+                <Copy size={12} style={{ marginRight: 4 }} />
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
             </div>
-            <button 
-              className="btn btn-secondary" 
-              style={{ padding: '4px 10px', fontSize: 12 }}
-              onClick={handleCopySchema}
-            >
-              <Copy size={12} style={{ marginRight: 4 }} />
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
+            <pre style={{ 
+              padding: 16, 
+              background: 'var(--bg-primary)', 
+              borderRadius: 'var(--radius-md)',
+              fontSize: 11,
+              lineHeight: 1.5,
+              overflow: 'auto',
+              maxHeight: 200,
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--text-secondary)'
+            }}>
+              {sampleSchema}
+            </pre>
           </div>
-          <pre style={{ 
-            padding: 16, 
-            background: 'var(--bg-primary)', 
-            borderRadius: 'var(--radius-md)',
-            fontSize: 11,
-            lineHeight: 1.5,
-            overflow: 'auto',
-            maxHeight: 200,
-            fontFamily: 'var(--font-mono)',
-            color: 'var(--text-secondary)'
-          }}>
-            {sampleSchema}
-          </pre>
-        </div>
+        )}
 
         <div style={{ marginTop: 20, textAlign: 'center' }}>
           <button className="btn btn-primary" onClick={onClose}>
