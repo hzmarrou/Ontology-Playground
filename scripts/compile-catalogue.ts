@@ -26,7 +26,6 @@ const OUTPUT_PATH = join(ROOT, 'public', 'catalogue.json');
 // ------------------------------------------------------------------
 
 interface CatalogueMetadata {
-  id: string;
   name: string;
   description: string;
   icon?: string;
@@ -39,7 +38,7 @@ interface CatalogueMetadata {
 // Validation helpers
 // ------------------------------------------------------------------
 
-const REQUIRED_METADATA_FIELDS = ['id', 'name', 'description', 'category'] as const;
+const REQUIRED_METADATA_FIELDS = ['name', 'description', 'category'] as const;
 const VALID_CATEGORIES = ['retail', 'healthcare', 'finance', 'manufacturing', 'education', 'general'];
 
 function validateMetadata(meta: unknown, filePath: string): CatalogueMetadata {
@@ -130,8 +129,13 @@ function compile(): Catalogue {
         continue;
       }
 
-      if (seenIds.has(metadata.id)) {
-        console.error(`✘ ${dir}: duplicate catalogue id "${metadata.id}"`);
+      // Derive a stable ID from the filesystem path: <source>/<slug>
+      // For community ontologies the path is deeper: community/<user>/<slug>
+      const relPath = dir.slice(tierDir.length + 1); // e.g. "cosmic-coffee" or "alice/my-ontology"
+      const entryId = `${source}/${relPath}`;
+
+      if (seenIds.has(entryId)) {
+        console.error(`✘ ${dir}: duplicate catalogue path "${entryId}"`);
         errors++;
         continue;
       }
@@ -161,9 +165,9 @@ function compile(): Catalogue {
         continue;
       }
 
-      seenIds.add(metadata.id);
+      seenIds.add(entryId);
       entries.push({
-        id: metadata.id,
+        id: entryId,
         name: metadata.name,
         description: metadata.description,
         icon: metadata.icon,

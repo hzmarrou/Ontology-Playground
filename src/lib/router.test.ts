@@ -22,17 +22,31 @@ describe('parseHash', () => {
     expect(parseHash('#/catalogue')).toEqual({ page: 'catalogue', ontologyId: undefined });
   });
 
-  it('parses catalogue route with id', () => {
+  it('parses catalogue route with single-segment id', () => {
     expect(parseHash('#/catalogue/cosmic-coffee')).toEqual({
       page: 'catalogue',
       ontologyId: 'cosmic-coffee',
     });
   });
 
-  it('parses embed route with id', () => {
-    expect(parseHash('#/embed/cosmic-coffee')).toEqual({
+  it('parses catalogue route with path-based id (official)', () => {
+    expect(parseHash('#/catalogue/official/cosmic-coffee')).toEqual({
+      page: 'catalogue',
+      ontologyId: 'official/cosmic-coffee',
+    });
+  });
+
+  it('parses catalogue route with path-based id (community)', () => {
+    expect(parseHash('#/catalogue/community/alice/my-ontology')).toEqual({
+      page: 'catalogue',
+      ontologyId: 'community/alice/my-ontology',
+    });
+  });
+
+  it('parses embed route with path-based id', () => {
+    expect(parseHash('#/embed/official/cosmic-coffee')).toEqual({
       page: 'embed',
-      ontologyId: 'cosmic-coffee',
+      ontologyId: 'official/cosmic-coffee',
     });
   });
 
@@ -54,15 +68,15 @@ describe('routeToHash', () => {
     expect(routeToHash({ page: 'catalogue' })).toBe('#/catalogue');
   });
 
-  it('converts catalogue route with id', () => {
-    expect(routeToHash({ page: 'catalogue', ontologyId: 'cosmic-coffee' })).toBe(
-      '#/catalogue/cosmic-coffee',
+  it('converts catalogue route with path-based id', () => {
+    expect(routeToHash({ page: 'catalogue', ontologyId: 'official/cosmic-coffee' })).toBe(
+      '#/catalogue/official/cosmic-coffee',
     );
   });
 
-  it('converts embed route', () => {
-    expect(routeToHash({ page: 'embed', ontologyId: 'cosmic-coffee' })).toBe(
-      '#/embed/cosmic-coffee',
+  it('converts embed route with path-based id', () => {
+    expect(routeToHash({ page: 'embed', ontologyId: 'official/cosmic-coffee' })).toBe(
+      '#/embed/official/cosmic-coffee',
     );
   });
 });
@@ -71,8 +85,9 @@ describe('roundtrip', () => {
   const routes = [
     { page: 'home' as const },
     { page: 'catalogue' as const },
-    { page: 'catalogue' as const, ontologyId: 'healthcare' },
-    { page: 'embed' as const, ontologyId: 'finance-ledger' },
+    { page: 'catalogue' as const, ontologyId: 'official/healthcare' },
+    { page: 'catalogue' as const, ontologyId: 'community/alice/finance-ledger' },
+    { page: 'embed' as const, ontologyId: 'official/finance' },
   ];
 
   for (const route of routes) {
@@ -94,9 +109,9 @@ describe('navigate + currentRoute', () => {
   });
 
   it('sets the hash via navigate()', () => {
-    navigate({ page: 'catalogue', ontologyId: 'test' });
-    expect(window.location.hash).toBe('#/catalogue/test');
-    expect(currentRoute()).toEqual({ page: 'catalogue', ontologyId: 'test' });
+    navigate({ page: 'catalogue', ontologyId: 'official/test' });
+    expect(window.location.hash).toBe('#/catalogue/official/test');
+    expect(currentRoute()).toEqual({ page: 'catalogue', ontologyId: 'official/test' });
   });
 });
 

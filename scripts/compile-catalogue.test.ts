@@ -44,7 +44,7 @@ describe('catalogue compilation (end-to-end)', () => {
   });
 
   it('cosmic-coffee entry preserves data bindings', () => {
-    const coffee = readCatalogue().entries.find((e: { id: string }) => e.id === 'cosmic-coffee');
+    const coffee = readCatalogue().entries.find((e: { id: string }) => e.id === 'official/cosmic-coffee');
     expect(coffee).toBeTruthy();
     expect(coffee.bindings.length).toBeGreaterThan(0);
     expect(coffee.bindings[0].table).toBeTruthy();
@@ -69,8 +69,9 @@ describe('catalogue metadata validation', () => {
     }
   });
 
-  it('no duplicate ids across catalogue entries', () => {
-    const ids = readCatalogue().entries.map((e: { id: string }) => e.id);
-    expect(new Set(ids).size).toBe(ids.length);
+  it('all entries have path-based ids', () => {
+    for (const entry of readCatalogue().entries) {
+      expect(entry.id).toMatch(/^(official|community)\//);
+    }
   });
 });

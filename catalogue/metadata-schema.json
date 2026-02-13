@@ -4,13 +4,8 @@
   "title": "Ontology Catalogue Metadata",
   "description": "Metadata for an ontology entry in the catalogue",
   "type": "object",
-  "required": ["id", "name", "description", "category"],
+  "required": ["name", "description", "category"],
   "properties": {
-    "id": {
-      "type": "string",
-      "pattern": "^[a-z0-9-]+$",
-      "description": "URL-safe slug identifier (lowercase, hyphens only)"
-    },
     "name": {
       "type": "string",
       "minLength": 1,

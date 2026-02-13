@@ -48,7 +48,7 @@ const fakeCatalogue: Catalogue = {
   count: 3,
   entries: [
     {
-      id: 'cosmic-coffee',
+      id: 'official/cosmic-coffee',
       name: 'Cosmic Coffee',
       description: 'Coffee supply chain ontology',
       icon: '☕',
@@ -60,7 +60,7 @@ const fakeCatalogue: Catalogue = {
       bindings: [],
     },
     {
-      id: 'hospital-net',
+      id: 'community/drsmith/hospital-net',
       name: 'Hospital Network',
       description: 'Healthcare facility ontology',
       icon: '🏥',
@@ -72,7 +72,7 @@ const fakeCatalogue: Catalogue = {
       bindings: [],
     },
     {
-      id: 'finance-ledger',
+      id: 'official/finance-ledger',
       name: 'Finance Ledger',
       description: 'Financial transactions ontology',
       category: 'finance',
@@ -237,7 +237,7 @@ describe('GalleryModal', () => {
     expect(state.currentOntology.name).toBe('Cosmic Coffee');
     expect(state.currentOntology.entityTypes).toHaveLength(3);
     // Now navigates to deep link instead of calling onClose
-    expect(window.location.hash).toBe('#/catalogue/cosmic-coffee');
+    expect(window.location.hash).toBe('#/catalogue/official/cosmic-coffee');
   });
 
   it('shows "Community" badge only on community entries', async () => {

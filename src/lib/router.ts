@@ -2,10 +2,11 @@
  * Lightweight hash-based router for deep linking.
  *
  * Routes:
- *   /#/                         → home (default ontology)
- *   /#/catalogue                → opens gallery modal
- *   /#/catalogue/<ontology-id>  → loads a specific ontology from the catalogue
- *   /#/embed/<ontology-id>      → full-page embed view (for iframes)
+ *   /#/                                              → home (default ontology)
+ *   /#/catalogue                                     → opens gallery modal
+ *   /#/catalogue/<source>/<slug>                     → loads a specific ontology
+ *   /#/catalogue/community/<user>/<slug>             → community ontology
+ *   /#/embed/<source>/<slug>                         → full-page embed view
  */
 
 export type Route =
@@ -13,17 +14,19 @@ export type Route =
   | { page: 'catalogue'; ontologyId?: string }
   | { page: 'embed'; ontologyId: string };
 
-/** Parse a hash string (e.g. "#/catalogue/cosmic-coffee") into a Route. */
+/** Parse a hash string (e.g. "#/catalogue/official/cosmic-coffee") into a Route. */
 export function parseHash(hash: string): Route {
   // Strip leading "#" and optional leading "/"
   const path = hash.replace(/^#\/?/, '');
   const segments = path.split('/').filter(Boolean);
 
   if (segments[0] === 'catalogue') {
-    return { page: 'catalogue', ontologyId: segments[1] };
+    // Everything after "catalogue/" is the ontologyId (may be multi-segment)
+    const rest = segments.slice(1);
+    return { page: 'catalogue', ontologyId: rest.length > 0 ? rest.join('/') : undefined };
   }
-  if (segments[0] === 'embed' && segments[1]) {
-    return { page: 'embed', ontologyId: segments[1] };
+  if (segments[0] === 'embed' && segments.length > 1) {
+    return { page: 'embed', ontologyId: segments.slice(1).join('/') };
   }
   return { page: 'home' };
 }
