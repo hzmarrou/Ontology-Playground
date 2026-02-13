@@ -12,8 +12,24 @@ interface OntologyDesignerProps {
 }
 
 export function OntologyDesigner({ route }: OntologyDesignerProps) {
-  const { ontology, setOntologyName, setOntologyDescription, loadDraft } = useDesignerStore();
+  const { ontology, setOntologyName, setOntologyDescription, loadDraft, undo, redo } = useDesignerStore();
   const darkMode = useAppStore((s) => s.darkMode);
+
+  // Keyboard shortcuts: Cmd/Ctrl+Z → undo, Cmd/Ctrl+Shift+Z → redo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || e.key !== 'z') return;
+      e.preventDefault();
+      if (e.shiftKey) {
+        redo();
+      } else {
+        undo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo, redo]);
 
   // Load existing ontology into the designer when editing via /#/designer/<id>
   useEffect(() => {

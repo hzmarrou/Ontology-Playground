@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, AlertTriangle, CheckCircle, Upload, Github, FilePlus } from 'lucide-react';
+import { Download, AlertTriangle, CheckCircle, Upload, Github, FilePlus, Undo2, Redo2 } from 'lucide-react';
 import { useDesignerStore } from '../../store/designerStore';
 import type { ValidationError } from '../../store/designerStore';
 import { useAppStore } from '../../store/appStore';
@@ -13,9 +13,11 @@ const GITHUB_CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID || '';
  * Toolbar buttons — rendered in the designer topbar.
  */
 export function DesignerToolbar() {
-  const { ontology, validate, resetDraft } = useDesignerStore();
+  const { ontology, validate, resetDraft, undo, redo, _past, _future } = useDesignerStore();
   const loadOntology = useAppStore((s) => s.loadOntology);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const canUndo = _past.length > 0;
+  const canRedo = _future.length > 0;
 
   const handleValidate = () => {
     validate();
@@ -58,6 +60,13 @@ export function DesignerToolbar() {
   return (
     <>
       <div className="designer-toolbar">
+        <button className="designer-toolbar-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+          <Undo2 size={14} />
+        </button>
+        <button className="designer-toolbar-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
+          <Redo2 size={14} />
+        </button>
+        <div className="designer-toolbar-sep" />
         <button className="designer-toolbar-btn" onClick={handleNewOntology} title="New ontology">
           <FilePlus size={14} /> New
         </button>

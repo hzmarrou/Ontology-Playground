@@ -235,3 +235,106 @@ describe('useDesignerStore actions', () => {
     expect(useDesignerStore.getState().ontology.description).toBe('A test ontology');
   });
 });
+
+// ─── Undo / Redo ─────────────────────────────────────────────────────────────
+
+describe('undo / redo', () => {
+  it('undo restores the previous ontology state', () => {
+    const store = useDesignerStore.getState();
+    store.addEntity();
+    expect(useDesignerStore.getState().ontology.entityTypes).toHaveLength(1);
+
+    useDesignerStore.getState().undo();
+    expect(useDesignerStore.getState().ontology.entityTypes).toHaveLength(0);
+  });
+
+  it('redo re-applies the undone change', () => {
+    const store = useDesignerStore.getState();
+    store.addEntity();
+    useDesignerStore.getState().undo();
+    expect(useDesignerStore.getState().ontology.entityTypes).toHaveLength(0);
+
+    useDesignerStore.getState().redo();
+    expect(useDesignerStore.getState().ontology.entityTypes).toHaveLength(1);
+  });
+
+  it('undo is a no-op when history is empty', () => {
+    expect(useDesignerStore.getState()._past).toHaveLength(0);
+    useDesignerStore.getState().undo();
+    expect(useDesignerStore.getState().ontology.name).toBe('My Ontology');
+  });
+
+  it('redo is a no-op when future is empty', () => {
+    expect(useDesignerStore.getState()._future).toHaveLength(0);
+    useDesignerStore.getState().redo();
+    expect(useDesignerStore.getState().ontology.name).toBe('My Ontology');
+  });
+
+  it('new mutation after undo clears the redo stack', () => {
+    const store = useDesignerStore.getState();
+    store.addEntity();
+    store.addEntity();
+    useDesignerStore.getState().undo();
+    expect(useDesignerStore.getState()._future).toHaveLength(1);
+
+    // New mutation should clear future
+    useDesignerStore.getState().setOntologyName('Changed');
+    expect(useDesignerStore.getState()._future).toHaveLength(0);
+  });
+
+  it('multiple undo steps walk back through history', () => {
+    const store = useDesignerStore.getState();
+    store.setOntologyName('Step 1');
+    useDesignerStore.getState().setOntologyName('Step 2');
+    useDesignerStore.getState().setOntologyName('Step 3');
+
+    useDesignerStore.getState().undo();
+    expect(useDesignerStore.getState().ontology.name).toBe('Step 2');
+    useDesignerStore.getState().undo();
+    expect(useDesignerStore.getState().ontology.name).toBe('Step 1');
+    useDesignerStore.getState().undo();
+    expect(useDesignerStore.getState().ontology.name).toBe('My Ontology');
+  });
+
+  it('history is capped at 50 entries', () => {
+    for (let i = 0; i < 60; i++) {
+      useDesignerStore.getState().setOntologyName(`Step ${i}`);
+    }
+    expect(useDesignerStore.getState()._past.length).toBeLessThanOrEqual(50);
+  });
+
+  it('loadDraft clears history', () => {
+    useDesignerStore.getState().addEntity();
+    useDesignerStore.getState().addEntity();
+    expect(useDesignerStore.getState()._past.length).toBeGreaterThan(0);
+
+    useDesignerStore.getState().loadDraft({
+      name: 'Loaded', description: '', entityTypes: [], relationships: [],
+    });
+    expect(useDesignerStore.getState()._past).toHaveLength(0);
+    expect(useDesignerStore.getState()._future).toHaveLength(0);
+  });
+
+  it('resetDraft clears history', () => {
+    useDesignerStore.getState().addEntity();
+    expect(useDesignerStore.getState()._past.length).toBeGreaterThan(0);
+
+    useDesignerStore.getState().resetDraft();
+    expect(useDesignerStore.getState()._past).toHaveLength(0);
+    expect(useDesignerStore.getState()._future).toHaveLength(0);
+  });
+
+  it('undo/redo preserves ontology data integrity (deep clone)', () => {
+    useDesignerStore.getState().addEntity();
+    const entityId = useDesignerStore.getState().ontology.entityTypes[0].id;
+    useDesignerStore.getState().updateEntity(entityId, { name: 'Customer' });
+
+    useDesignerStore.getState().undo();
+    // Should be back to "New Entity"
+    expect(useDesignerStore.getState().ontology.entityTypes[0].name).toBe('New Entity');
+
+    // Mutating the current state shouldn't affect the redo stack
+    useDesignerStore.getState().redo();
+    expect(useDesignerStore.getState().ontology.entityTypes[0].name).toBe('Customer');
+  });
+});

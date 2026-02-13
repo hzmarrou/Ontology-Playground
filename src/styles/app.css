@@ -2071,6 +2071,11 @@ body {
   color: white;
   border-color: var(--ms-blue);
 }
+.designer-toolbar-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
 .designer-toolbar-btn.submit {
   background: #24292e;
   color: #fff;

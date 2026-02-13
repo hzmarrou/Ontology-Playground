@@ -109,6 +109,21 @@ export const ENTITY_ICONS = [
   '🌐', '📁', '🎯', '⚡', '🔗', '📝', '🏷️', '📈',
 ];
 
+// ─── History helpers ─────────────────────────────────────────────────────────
+
+const HISTORY_LIMIT = 50;
+
+function cloneOntology(o: Ontology): Ontology {
+  return JSON.parse(JSON.stringify(o));
+}
+
+/** Returns _past/_future updates to spread into set(). Call before mutating. */
+function historyPush(s: { _past: Ontology[]; ontology: Ontology }): { _past: Ontology[]; _future: Ontology[] } {
+  const past = [...s._past, cloneOntology(s.ontology)];
+  if (past.length > HISTORY_LIMIT) past.shift();
+  return { _past: past, _future: [] };
+}
+
 // ─── Store ───────────────────────────────────────────────────────────────────
 
 interface DesignerState {
@@ -147,6 +162,12 @@ interface DesignerState {
   loadDraft: (ontology: Ontology) => void;
   resetDraft: () => void;
   validate: () => ValidationError[];
+
+  // History (undo / redo)
+  _past: Ontology[];
+  _future: Ontology[];
+  undo: () => void;
+  redo: () => void;
 }
 
 function emptyOntology(): Ontology {
@@ -163,13 +184,15 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   selectedEntityId: null,
   selectedRelationshipId: null,
   validationErrors: [],
+  _past: [],
+  _future: [],
 
   // ─ Metadata ─────────────────────────────────────────────────────────────
   setOntologyName: (name) =>
-    set((s) => ({ ontology: { ...s.ontology, name } })),
+    set((s) => ({ ...historyPush(s), ontology: { ...s.ontology, name } })),
 
   setOntologyDescription: (description) =>
-    set((s) => ({ ontology: { ...s.ontology, description } })),
+    set((s) => ({ ...historyPush(s), ontology: { ...s.ontology, description } })),
 
   // ─ Entities ─────────────────────────────────────────────────────────────
   addEntity: () => {
@@ -185,6 +208,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       properties: [{ name: 'id', type: 'string', isIdentifier: true }],
     };
     set((s) => ({
+      ...historyPush(s),
       ontology: { ...s.ontology, entityTypes: [...s.ontology.entityTypes, entity] },
       selectedEntityId: entity.id,
       selectedRelationshipId: null,
@@ -193,6 +217,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   updateEntity: (id, updates) =>
     set((s) => ({
+      ...historyPush(s),
       ontology: {
         ...s.ontology,
         entityTypes: s.ontology.entityTypes.map((e) =>
@@ -203,6 +228,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   removeEntity: (id) =>
     set((s) => ({
+      ...historyPush(s),
       ontology: {
         ...s.ontology,
         entityTypes: s.ontology.entityTypes.filter((e) => e.id !== id),
@@ -219,6 +245,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   // ─ Properties ───────────────────────────────────────────────────────────
   addProperty: (entityId) =>
     set((s) => ({
+      ...historyPush(s),
       ontology: {
         ...s.ontology,
         entityTypes: s.ontology.entityTypes.map((e) =>
@@ -231,6 +258,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   updateProperty: (entityId, index, updates) =>
     set((s) => ({
+      ...historyPush(s),
       ontology: {
         ...s.ontology,
         entityTypes: s.ontology.entityTypes.map((e) =>
@@ -248,6 +276,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   removeProperty: (entityId, index) =>
     set((s) => ({
+      ...historyPush(s),
       ontology: {
         ...s.ontology,
         entityTypes: s.ontology.entityTypes.map((e) =>
@@ -260,6 +289,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   moveProperty: (entityId, fromIndex, toIndex) =>
     set((s) => ({
+      ...historyPush(s),
       ontology: {
         ...s.ontology,
         entityTypes: s.ontology.entityTypes.map((e) => {
@@ -283,6 +313,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
       description: '',
     };
     set((s) => ({
+      ...historyPush(s),
       ontology: { ...s.ontology, relationships: [...s.ontology.relationships, rel] },
       selectedRelationshipId: rel.id,
       selectedEntityId: null,
@@ -291,6 +322,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   updateRelationship: (id, updates) =>
     set((s) => ({
+      ...historyPush(s),
       ontology: {
         ...s.ontology,
         relationships: s.ontology.relationships.map((r) =>
@@ -301,6 +333,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   removeRelationship: (id) =>
     set((s) => ({
+      ...historyPush(s),
       ontology: {
         ...s.ontology,
         relationships: s.ontology.relationships.filter((r) => r.id !== id),
@@ -313,6 +346,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   addRelationshipAttribute: (relId) =>
     set((s) => ({
+      ...historyPush(s),
       ontology: {
         ...s.ontology,
         relationships: s.ontology.relationships.map((r) =>
@@ -325,6 +359,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   updateRelationshipAttribute: (relId, index, updates) =>
     set((s) => ({
+      ...historyPush(s),
       ontology: {
         ...s.ontology,
         relationships: s.ontology.relationships.map((r) =>
@@ -342,6 +377,7 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   removeRelationshipAttribute: (relId, index) =>
     set((s) => ({
+      ...historyPush(s),
       ontology: {
         ...s.ontology,
         relationships: s.ontology.relationships.map((r) =>
@@ -354,14 +390,37 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   // ─ Bulk ─────────────────────────────────────────────────────────────────
   loadDraft: (ontology) =>
-    set({ ontology, selectedEntityId: null, selectedRelationshipId: null, validationErrors: [] }),
+    set({ ontology, _past: [], _future: [], selectedEntityId: null, selectedRelationshipId: null, validationErrors: [] }),
 
   resetDraft: () =>
-    set({ ontology: emptyOntology(), selectedEntityId: null, selectedRelationshipId: null, validationErrors: [] }),
+    set({ ontology: emptyOntology(), _past: [], _future: [], selectedEntityId: null, selectedRelationshipId: null, validationErrors: [] }),
 
   validate: () => {
     const errors = validateOntology(get().ontology);
     set({ validationErrors: errors });
     return errors;
+  },
+
+  // ─ Undo / Redo ─────────────────────────────────────────────────────────
+  undo: () => {
+    const { _past, _future, ontology } = get();
+    if (_past.length === 0) return;
+    const previous = _past[_past.length - 1];
+    set({
+      ontology: previous,
+      _past: _past.slice(0, -1),
+      _future: [cloneOntology(ontology), ..._future],
+    });
+  },
+
+  redo: () => {
+    const { _past, _future, ontology } = get();
+    if (_future.length === 0) return;
+    const next = _future[0];
+    set({
+      ontology: next,
+      _past: [..._past, cloneOntology(ontology)],
+      _future: _future.slice(1),
+    });
   },
 }));
