@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, GripVertical, Key } from 'lucide-react';
 import { useDesignerStore, ENTITY_COLORS, ENTITY_ICONS } from '../../store/designerStore';
 import type { Property } from '../../data/ontology';
@@ -22,6 +22,20 @@ export function EntityForm() {
   } = useDesignerStore();
 
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // When an entity is selected externally (e.g. graph click), expand and scroll to it
+  useEffect(() => {
+    if (selectedEntityId && !expandedEntities.has(selectedEntityId)) {
+      setExpandedEntities((prev) => new Set(prev).add(selectedEntityId));
+    }
+    if (selectedEntityId) {
+      // Delay scroll slightly so the card expands first
+      requestAnimationFrame(() => {
+        cardRefs.current.get(selectedEntityId)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+  }, [selectedEntityId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleExpand = (id: string) => {
     setExpandedEntities((prev) => {
@@ -62,6 +76,7 @@ export function EntityForm() {
         return (
           <div
             key={entity.id}
+            ref={(el) => { if (el) cardRefs.current.set(entity.id, el); else cardRefs.current.delete(entity.id); }}
             className={`designer-entity-card ${isSelected ? 'selected' : ''}`}
           >
             {/* Header row */}

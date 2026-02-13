@@ -39,7 +39,7 @@ export function DesignerPreview() {
           onSelectRelationship={selectRelationship}
         />
       ) : (
-        <RdfPreview ontology={ontology} />
+        <RdfPreview ontology={ontology} onImported={() => setActiveTab('graph')} />
       )}
     </div>
   );
@@ -66,6 +66,13 @@ function GraphPreview({ ontology, darkMode, onSelectEntity, onSelectRelationship
     [darkMode],
   );
 
+  // Structural fingerprint — only changes when nodes/edges are added, removed, or reconnected
+  const structureKey = useMemo(() => {
+    const nodeIds = ontology.entityTypes.map((e) => e.id).sort().join(',');
+    const edgeKeys = ontology.relationships.map((r) => `${r.id}:${r.from}>${r.to}`).sort().join(',');
+    return `${nodeIds}|${edgeKeys}`;
+  }, [ontology.entityTypes, ontology.relationships]);
+
   const buildElements = useCallback(() => {
     const nodes = ontology.entityTypes.map((e) => ({
       data: { id: e.id, label: `${e.icon} ${e.name}`, color: e.color },
@@ -76,7 +83,7 @@ function GraphPreview({ ontology, darkMode, onSelectEntity, onSelectRelationship
     return [...nodes, ...edges];
   }, [ontology]);
 
-  // Recreate graph when ontology structurally changes
+  // Recreate graph only when the structure (node/edge set or connectivity) changes
   useEffect(() => {
     if (!containerRef.current) return;
     const cy = cytoscape({
@@ -142,14 +149,39 @@ function GraphPreview({ ontology, darkMode, onSelectEntity, onSelectRelationship
 
     cyRef.current = cy;
     return () => { cy.destroy(); cyRef.current = null; };
-  }, [buildElements, themeColors, onSelectEntity, onSelectRelationship, ontology.entityTypes.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [structureKey, themeColors, onSelectEntity, onSelectRelationship]);
+
+  // Update cosmetic data (label, color, edge name) in-place without re-layout
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    for (const entity of ontology.entityTypes) {
+      const node = cy.getElementById(entity.id);
+      if (node.length) {
+        node.data('label', `${entity.icon} ${entity.name}`);
+        node.data('color', entity.color);
+      }
+    }
+    for (const rel of ontology.relationships) {
+      const edge = cy.getElementById(rel.id);
+      if (edge.length) {
+        edge.data('label', rel.name);
+      }
+    }
+  }, [ontology]);
 
   return <div ref={containerRef} className="designer-graph-container" />;
 }
 
 // ─── RDF tab ─────────────────────────────────────────────────────────────────
 
-function RdfPreview({ ontology }: { ontology: GraphPreviewProps['ontology'] & { name: string; description: string } }) {
+interface RdfPreviewProps {
+  ontology: GraphPreviewProps['ontology'] & { name: string; description: string };
+  onImported: () => void;
+}
+
+function RdfPreview({ ontology, onImported }: RdfPreviewProps) {
   const [copied, setCopied] = useState(false);
   const [importMode, setImportMode] = useState(false);
   const [importText, setImportText] = useState('');
@@ -182,6 +214,7 @@ function RdfPreview({ ontology }: { ontology: GraphPreviewProps['ontology'] & { 
       setImportMode(false);
       setImportText('');
       setImportError(null);
+      onImported();
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Failed to parse RDF');
     }
