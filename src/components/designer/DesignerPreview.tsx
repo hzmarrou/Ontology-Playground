@@ -6,6 +6,7 @@ import { useDesignerStore } from '../../store/designerStore';
 import { useAppStore } from '../../store/appStore';
 import { serializeToRDF } from '../../lib/rdf/serializer';
 import { parseRDF } from '../../lib/rdf/parser';
+import { highlightRdf, RDF_HIGHLIGHT_DARK, RDF_HIGHLIGHT_LIGHT } from '../../lib/rdf/highlighter';
 
 cytoscape.use(fcose);
 
@@ -195,6 +196,10 @@ function RdfPreview({ ontology, onImported }: RdfPreviewProps) {
     rdfOutput = '<!-- Ontology is incomplete or invalid; fix errors to see RDF output -->';
   }
 
+  const darkMode = useAppStore((s) => s.darkMode);
+  const hlTheme = darkMode ? RDF_HIGHLIGHT_DARK : RDF_HIGHLIGHT_LIGHT;
+  const highlightedRdf = useMemo(() => highlightRdf(rdfOutput, hlTheme), [rdfOutput, hlTheme]);
+
   const handleCopy = () => {
     navigator.clipboard.writeText(rdfOutput).then(() => {
       setCopied(true);
@@ -262,7 +267,7 @@ function RdfPreview({ ontology, onImported }: RdfPreviewProps) {
           spellCheck={false}
         />
       ) : (
-        <pre className="designer-rdf-source">{rdfOutput}</pre>
+        <pre className="designer-rdf-source">{highlightedRdf}</pre>
       )}
     </div>
   );

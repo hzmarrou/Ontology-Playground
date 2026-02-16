@@ -25,18 +25,19 @@ export function DesignerToolbar() {
 
   const handleExportRDF = () => {
     const errors = validate();
-    if (errors.length > 0) return;
+    // Allow download even with validation errors (user sees warnings in sidebar)
     try {
       const rdf = serializeToRDF(ontology, []);
       const blob = new Blob([rdf], { type: 'application/rdf+xml' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${ontology.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'ontology'}.rdf`;
+      const suffix = errors.length > 0 ? '-draft' : '';
+      a.download = `${ontology.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'ontology'}${suffix}.rdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      // validation will catch issues
+      // serialization failed — validation errors are shown in sidebar
     }
   };
 

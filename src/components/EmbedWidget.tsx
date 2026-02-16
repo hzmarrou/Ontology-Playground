@@ -16,6 +16,7 @@ import type { Core, EventObject } from 'cytoscape';
 import type { Ontology, EntityType, Relationship } from '../data/ontology';
 import { serializeToRDF } from '../lib/rdf/serializer';
 import { parseRDF } from '../lib/rdf/parser';
+import { highlightRdf, RDF_HIGHLIGHT_DARK, RDF_HIGHLIGHT_LIGHT } from '../lib/rdf/highlighter';
 import type { Catalogue } from '../types/catalogue';
 
 cytoscape.use(fcose);
@@ -352,6 +353,9 @@ function EmbedGraph({ ontology, theme, setSelected }: EmbedGraphProps) {
 
 function EmbedRdfSource({ ontology, theme }: { ontology: Ontology; theme: ThemeTokens }) {
   const rdf = useMemo(() => serializeToRDF(ontology, []), [ontology]);
+  const isDark = theme === THEMES.dark;
+  const hlTheme = isDark ? RDF_HIGHLIGHT_DARK : RDF_HIGHLIGHT_LIGHT;
+  const highlighted = useMemo(() => highlightRdf(rdf, hlTheme), [rdf, hlTheme]);
 
   return (
     <pre style={{
@@ -360,7 +364,7 @@ function EmbedRdfSource({ ontology, theme }: { ontology: Ontology; theme: ThemeT
       fontSize: 12, lineHeight: 1.6, fontFamily: "'Cascadia Code', 'Fira Code', monospace",
       whiteSpace: 'pre-wrap', wordBreak: 'break-word',
     }}>
-      {rdf}
+      {highlighted}
     </pre>
   );
 }

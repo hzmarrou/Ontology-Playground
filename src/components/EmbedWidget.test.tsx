@@ -158,9 +158,10 @@ describe('EmbedWidget', () => {
     // Switch to RDF tab
     await user.click(screen.getByText('RDF Source'));
 
-    // Should show RDF serialization (contains xml header or owl:Ontology)
+    // Should show RDF serialization (text is split across syntax-highlighted spans)
     await waitFor(() => {
-      expect(screen.getByText(/owl:Ontology/)).toBeTruthy();
+      const pre = document.querySelector('pre');
+      expect(pre?.textContent).toMatch(/owl:Ontology/);
     });
 
     // Copy RDF button should appear

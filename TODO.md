@@ -172,7 +172,7 @@ Allow embedding an interactive ontology viewer in external pages (blogs,
 tutorials, docs) — similar to how CodePen or GitHub Gist embeds work.
 
 ### 4.1 Standalone embed build
-- [ ] Create a separate Vite entry point `src/embed.tsx` that renders a
+- [x] Create a separate Vite entry point `src/embed.tsx` that renders a
   minimal, self-contained ontology viewer:
   - Cytoscape graph visualization (read-only)
   - Entity/relationship inspector on click
@@ -181,8 +181,8 @@ tutorials, docs) — similar to how CodePen or GitHub Gist embeds work.
     - `data-ontology-url` attribute (URL to a `.rdf` or `.json` file)
     - `data-ontology-inline` attribute (inline JSON, base64-encoded)
     - `data-catalogue-id` attribute (loads from the published `catalogue.json`)
-- [ ] Build as a single JS + CSS bundle: `ontology-embed.js` + `ontology-embed.css`
-- [ ] Add Vite build config for the embed target:
+- [x] Build as a single JS + CSS bundle: `ontology-embed.js` + `ontology-embed.css`
+- [x] Add Vite build config for the embed target:
   ```ts
   // vite.config.embed.ts
   build: {
@@ -190,11 +190,11 @@ tutorials, docs) — similar to how CodePen or GitHub Gist embeds work.
     rollupOptions: { output: { assetFileNames: 'ontology-embed.[ext]' } }
   }
   ```
-- [ ] Keep bundle size under 150KB gzipped (Cytoscape is ~90KB gz, must
+- [x] Keep bundle size under 150KB gzipped (Cytoscape is ~90KB gz, must
   account for it)
 
 ### 4.2 Embed API & usage
-- [ ] Usage pattern for external pages:
+- [x] Usage pattern for external pages:
   ```html
   <div class="ontology-embed"
        data-catalogue-id="cosmic-coffee"
@@ -203,16 +203,23 @@ tutorials, docs) — similar to how CodePen or GitHub Gist embeds work.
   </div>
   <script src="https://<site>/ontology-embed.js"></script>
   ```
-- [ ] Support configuration: theme (light/dark), height, initial zoom,
+- [x] Support configuration: theme (light/dark), height, initial zoom,
   read-only mode
-- [ ] Provide a "Copy embed code" button in the main app's gallery for each
+- [x] Provide a "Copy embed code" button in the main app's gallery for each
   ontology
 
 ### 4.3 RDF source tab
-- [ ] In the embed widget, add a tabbed view: "Graph" | "RDF Source"
+- [x] In the embed widget, add a tabbed view: "Graph" | "RDF Source"
 - [ ] RDF source tab shows syntax-highlighted RDF/XML (use a lightweight
   highlighter or simple regex-based coloring — no heavy deps)
-- [ ] Add a "Copy RDF" button
+- [x] Add a "Copy RDF" button
+
+### 4.4 Interactive samples page
+- [x] Create `public/embed/samples.html` — an article-style page that
+  teaches ontology concepts using live embedded visualizations
+- [x] Cover all 6 official ontologies across 8 sections
+- [x] Include dark/light theme comparison (side-by-side Finance embeds)
+- [x] Embed usage instructions + copy-paste snippet at the end
 
 ---
 
@@ -269,39 +276,39 @@ The output is a valid RDF file that can be submitted to the catalogue via a
 one-click PR flow.
 
 ### 6.1 Visual entity designer
-- [ ] Create `OntologyDesigner` component — a full-screen editor panel
-- [ ] Entity creation: name, icon picker, color picker, description
-- [ ] Property builder: add/remove/reorder properties with type selectors
+- [x] Create `OntologyDesigner` component — a full-screen editor panel
+- [x] Entity creation: name, icon picker, color picker, description
+- [x] Property builder: add/remove/reorder properties with type selectors
   (string, integer, decimal, date, datetime, boolean, enum)
-- [ ] Mark identifier properties
-- [ ] Drag-and-drop reordering of entities and properties
+- [x] Mark identifier properties
+- [x] Drag-and-drop reordering of entities and properties
 
 ### 6.2 Relationship builder
-- [ ] Visual relationship creation: select source entity → target entity
-- [ ] Set relationship name, cardinality (1:1, 1:n, n:1, n:n), description
-- [ ] Optional: relationship attributes (e.g., quantity on an order→product
+- [x] Visual relationship creation: select source entity → target entity
+- [x] Set relationship name, cardinality (1:1, 1:n, n:1, n:n), description
+- [x] Optional: relationship attributes (e.g., quantity on an order→product
   edge)
-- [ ] Live preview: as relationships are added, the Cytoscape graph updates
+- [x] Live preview: as relationships are added, the Cytoscape graph updates
   in real-time
 
 ### 6.3 Live graph preview
-- [ ] Split-pane layout: editor form on the left, live Cytoscape graph on
+- [x] Split-pane layout: editor form on the left, live Cytoscape graph on
   the right
-- [ ] Graph updates in real-time as entities and relationships are
+- [x] Graph updates in real-time as entities and relationships are
   added/edited/removed
-- [ ] Click a node or edge in the graph to select it in the editor
+- [x] Click a node or edge in the graph to select it in the editor
 
 ### 6.4 RDF output & validation
-- [ ] "Export RDF" button generates valid RDF/OWL via the serializer from §1
-- [ ] "Preview RDF" tab shows the live RDF output as you design
-- [ ] Validate the ontology before export:
+- [x] "Export RDF" button generates valid RDF/OWL via the serializer from §1
+- [x] "Preview RDF" tab shows the live RDF output as you design
+- [x] Validate the ontology before export:
   - All relationships reference existing entity IDs
   - No duplicate entity/relationship IDs
   - At least one entity type exists
   - Each entity has at least one identifier property
 
 ### 6.5 One-click PR to catalogue
-- [ ] "Submit to Catalogue" button that:
+- [x] "Submit to Catalogue" button that:
   1. Serializes the ontology to RDF
   2. Prompts for metadata (name, description, tags, author GitHub username)
   3. Uses the GitHub API to:
@@ -311,27 +318,44 @@ one-click PR flow.
         `catalogue/community/<username>/`
      d. Open a PR against the upstream repo
   4. Show a link to the created PR
-- [ ] Requires GitHub OAuth — add a "Sign in with GitHub" flow (client-side
+- [x] Requires GitHub OAuth — add a "Sign in with GitHub" flow (client-side
   OAuth via GitHub's device flow or a lightweight OAuth proxy)
-- [ ] For unauthenticated users, fall back to "Download RDF" + manual PR
+- [x] For unauthenticated users, fall back to "Download RDF" + manual PR
   instructions
-- [ ] Pre-fill the PR description with an ontology summary (entity count,
+- [x] Pre-fill the PR description with an ontology summary (entity count,
   relationship count, description)
 
 ### 6.6 Edit existing ontologies
-- [ ] "Edit" button in the Gallery for any loaded ontology → opens the
+- [x] "Edit" button in the Gallery for any loaded ontology → opens the
   designer pre-populated with the ontology data
 - [ ] "Edit" button in the embed widget for catalogue ontologies
-- [ ] When editing a community ontology, the PR targets the original file
+- [x] When editing a community ontology, the PR targets the original file
   path (update, not create)
 
 ### 6.7 Undo / Redo in the designer
-- [ ] Add an undo/redo history stack to the designer store (track snapshots
+- [x] Add an undo/redo history stack to the designer store (track snapshots
   of the ontology state on each mutation)
-- [ ] Wire Ctrl+Z / Cmd+Z (undo) and Ctrl+Shift+Z / Cmd+Shift+Z (redo)
+- [x] Wire Ctrl+Z / Cmd+Z (undo) and Ctrl+Shift+Z / Cmd+Shift+Z (redo)
   keyboard shortcuts
-- [ ] Add undo/redo buttons in the designer toolbar
-- [ ] Cap history depth (e.g., 50 steps) to limit memory usage
+- [x] Add undo/redo buttons in the designer toolbar
+- [x] Cap history depth (e.g., 50 steps) to limit memory usage
+
+### 6.8 RDF syntax highlighting
+- [ ] Add syntax highlighting to the RDF source view in the designer's
+  "Preview RDF" tab — color XML tags, attributes, namespaces, and values
+- [ ] Use a lightweight regex-based highlighter (no heavy deps like
+  Prism/highlight.js) to keep bundle size small
+- [ ] Apply the same highlighting to the embed widget's RDF Source tab
+  and the Gallery's "View RDF source" panel
+
+### 6.9 Download RDF from designer
+- [ ] Add a "Download .rdf" button to the designer toolbar that saves the
+  current ontology as an RDF/XML file (similar to the catalogue's
+  existing RDF download)
+- [ ] File name should be derived from the ontology name (slugified),
+  e.g., `my-ontology.rdf`
+- [ ] Validate before download — show validation errors if the ontology
+  has issues, but allow download anyway with a warning
 
 ---
 

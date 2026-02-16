@@ -4,6 +4,7 @@ import { X, Layers, ArrowRight, Search, Code, User, Pencil, Share2 } from 'lucid
 import { useDesignerStore } from '../store/designerStore';
 import { useAppStore } from '../store/appStore';
 import { serializeToRDF } from '../lib/rdf/serializer';
+import { highlightRdf, RDF_HIGHLIGHT_DARK, RDF_HIGHLIGHT_LIGHT } from '../lib/rdf/highlighter';
 import { navigate } from '../lib/router';
 import type { CatalogueEntry, Catalogue } from '../types/catalogue';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '../types/catalogue';
@@ -426,24 +427,7 @@ export function GalleryModal({ onClose }: GalleryModalProps) {
                         style={{ overflow: 'hidden' }}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <pre
-                          style={{
-                            marginTop: 12,
-                            padding: 12,
-                            background: 'var(--bg-primary)',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border-primary)',
-                            fontSize: 11,
-                            lineHeight: 1.5,
-                            overflow: 'auto',
-                            maxHeight: 250,
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            color: 'var(--text-secondary)',
-                          }}
-                        >
-                          {serializeToRDF(entry.ontology, entry.bindings)}
-                        </pre>
+                        <GalleryRdfSource ontology={entry.ontology} bindings={entry.bindings} />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -490,5 +474,35 @@ export function GalleryModal({ onClose }: GalleryModalProps) {
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+// ─── Highlighted RDF source (gallery cards) ──────────────────────────────────
+
+function GalleryRdfSource({ ontology, bindings }: { ontology: Parameters<typeof serializeToRDF>[0]; bindings: Parameters<typeof serializeToRDF>[1] }) {
+  const darkMode = useAppStore((s) => s.darkMode);
+  const hlTheme = darkMode ? RDF_HIGHLIGHT_DARK : RDF_HIGHLIGHT_LIGHT;
+  const rdf = useMemo(() => serializeToRDF(ontology, bindings), [ontology, bindings]);
+  const highlighted = useMemo(() => highlightRdf(rdf, hlTheme), [rdf, hlTheme]);
+
+  return (
+    <pre
+      style={{
+        marginTop: 12,
+        padding: 12,
+        background: 'var(--bg-primary)',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--border-primary)',
+        fontSize: 11,
+        lineHeight: 1.5,
+        overflow: 'auto',
+        maxHeight: 250,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        color: 'var(--text-secondary)',
+      }}
+    >
+      {highlighted}
+    </pre>
   );
 }
