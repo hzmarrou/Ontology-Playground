@@ -1,37 +1,108 @@
-# Ontology Playground ☕
+# Ontology Playground (Preview) ☕
 
-An interactive demo application showcasing **Microsoft Fabric IQ Ontology** through the fictional "Cosmic Coffee Company" ontology.
+A free, open-source web application for learning about ontologies and
+**Microsoft Fabric IQ**. Explore pre-built ontologies, design your own in a
+visual editor, export as RDF/XML, and share interactive diagrams — all from a
+fully static site with zero backend dependencies.
 
 ![Microsoft Fabric](https://img.shields.io/badge/Microsoft-Fabric-0078D4?style=flat-square&logo=microsoft)
-![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 ## Features
 
-- **Interactive Graph Visualization** - Explore entity types and relationships using Cytoscape.js
-- **Quest System** - Gamified learning with 5 progressive quests and achievement badges
-- **NL Query Playground** - Demonstrate NL2Ontology natural language queries
-- **Data Bindings View** - See how ontology concepts connect to OneLake sources
-- **Microsoft Fluent Design** - Dark/light themes with Microsoft branding
+### Interactive Graph Exploration
 
-## Sample Ontology
+Cytoscape.js-powered graph that renders any ontology as an interactive
+node-and-edge diagram. Pan, zoom, click nodes to inspect properties, and use
+the live search bar to filter entities and relationships.
 
-The demo includes a complete "Cosmic Coffee Company" ontology with:
+### Ontology Catalogue
 
-| Entity Type | Description |
-|-------------|-------------|
-| Customer    | Coffee shop customers with loyalty tiers |
-| Order       | Purchase transactions |
-| Product     | Coffee products with origins |
-| Store       | Physical locations |
-| Supplier    | Bean and goods suppliers |
-| Shipment    | Supply chain deliveries |
+A curated library of official and community-contributed ontologies spanning six
+domains (Retail, E-Commerce, Healthcare, Finance, Manufacturing, Education).
+Browse by category, search by name or tags, load any ontology with one click,
+and view its RDF source. Every ontology has a shareable deep link
+(`/#/catalogue/official/cosmic-coffee`).
+
+### Visual Ontology Designer
+
+A full-screen, split-pane editor for creating ontologies from scratch or
+editing existing ones. Add entity types with icons, colors, and typed
+properties; define relationships with cardinalities; see a live graph preview
+that updates as you work. Includes undo/redo (50 levels), real-time validation,
+and export to RDF/XML or JSON.
+
+### RDF Import & Export
+
+Full round-trip support for RDF/XML (OWL classes, datatype properties, object
+properties with cardinalities). Import `.rdf` / `.owl` files, export in the
+exact format Microsoft Fabric IQ expects, and verify fidelity with automated
+round-trip tests.
+
+### One-Click Catalogue PR
+
+Sign in with GitHub (device flow) and submit your ontology to the community
+catalogue directly from the designer — the app forks the repo, creates a
+branch, commits the RDF + metadata, and opens a pull request automatically.
+
+### Embeddable Widget
+
+A self-contained JavaScript file (`ontology-embed.js`) that renders an
+interactive ontology viewer on any web page with a single `<script>` tag.
+Supports dark/light themes, multiple loading methods (catalogue ID, URL,
+inline base64), and click-to-inspect. See the
+[Embedding Guide](docs/embed-guide.md) for details.
+
+### Learning Content
+
+Six in-app articles (`/#/learn`) that teach ontology concepts from the ground
+up — from "What is an Ontology?" through RDF/OWL syntax, Fabric IQ concepts,
+building your first ontology, design patterns, and contributing to the
+catalogue. Each article includes live embedded ontology visualizations.
+
+### Quest System
+
+Five progressive quests that guide users through ontology concepts with
+multi-step instructions, hints, progress bars, and achievement badges.
+
+### Natural Language Query Playground
+
+Type natural language questions ("Which customers placed orders?") and see how
+they map to ontology entities and relationships — a preview of Fabric IQ's
+NL2Ontology capability.
+
+### Deep Linking & URL Routing
+
+Client-side hash routing with shareable URLs for every page:
+
+| Route | Page |
+|-------|------|
+| `/#/` | Home (default ontology) |
+| `/#/catalogue` | Ontology gallery |
+| `/#/catalogue/<id>` | Specific ontology |
+| `/#/designer` | Visual designer |
+| `/#/designer/<id>` | Designer with catalogue ontology |
+| `/#/learn` | Learning content index |
+| `/#/learn/<slug>` | Individual article |
+
+## Official Ontologies
+
+| Domain | Ontology | Entities | Relationships |
+|--------|----------|----------|---------------|
+| Retail | Cosmic Coffee Company | 6 | 7 |
+| E-Commerce | Online Retail | 5 | 6 |
+| Healthcare | Clinical System | 5 | 6 |
+| Finance | Banking & Finance | 5 | 6 |
+| Manufacturing | Industry 4.0 | 5 | 5 |
+| Education | University System | 5 | 6 |
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm 9+
 
 ### Installation
@@ -55,7 +126,9 @@ Visit http://localhost:5173
 npm run build
 ```
 
-Output is in the `build/` folder.
+The build pipeline compiles the catalogue, compiles learning content markdown,
+type-checks, bundles the app, and builds the embed widget. Output is in
+`build/`.
 
 ### Running Tests
 
@@ -106,31 +179,40 @@ GitHub Pages build so asset paths resolve correctly.
 ```
 ontology-quest/
 ├── src/
-│   ├── components/       # React components
-│   │   ├── OntologyGraph.tsx
-│   │   ├── InspectorPanel.tsx
-│   │   ├── QuestPanel.tsx
-│   │   ├── QueryPlayground.tsx
-│   │   └── ...
-│   ├── data/
-│   │   ├── ontology.ts   # Cosmic Coffee ontology model
-│   │   └── quests.ts     # Quest definitions & NL responses
-│   ├── store/
-│   │   └── appStore.ts   # Zustand state management
-│   └── styles/
-│       └── app.css       # Microsoft Fluent-inspired styles
-├── staticwebapp.config.json  # Azure SWA routing config
-└── .github/workflows/    # CI/CD workflow
+│   ├── components/       # React components (graph, designer, modals, learn page)
+│   ├── data/             # Ontology model, query engine, quest definitions
+│   ├── lib/              # Router, RDF parser/serializer, catalogue helpers
+│   ├── store/            # Zustand stores (app state, designer state)
+│   ├── styles/           # CSS (Microsoft Fluent-inspired dark/light themes)
+│   └── types/            # TypeScript type definitions
+├── catalogue/            # Official + community ontology RDF files
+├── content/learn/        # Markdown articles for the learning section
+├── scripts/              # Build-time compilers (catalogue, learning content)
+├── api/                  # Azure Functions backend (optional, for AI builder)
+├── docs/                 # Guides and documentation
+├── public/               # Static assets (compiled catalogue.json, learn.json)
+└── .github/workflows/    # CI/CD (Azure SWA + GitHub Pages)
 ```
+
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Ontology Authoring Guide](docs/authoring-guide.md) | How to create ontologies that work well in the Playground — field-by-field reference, best practices, and a step-by-step walkthrough |
+| [Embedding Guide](docs/embed-guide.md) | How to embed interactive ontology widgets on any web page |
+| [GitHub OAuth Setup](docs/github-oauth-setup.md) | How to configure GitHub OAuth for one-click catalogue PRs |
+| [Embed Security](docs/embed-security.md) | Security model for the embeddable widget |
+| [Feature Summary](docs/feature-summary.md) | Detailed write-up of every feature and how it helps Fabric IQ adoption |
 
 ## Technologies
 
-- **React 18** + TypeScript
-- **Cytoscape.js** - Graph visualization
-- **Framer Motion** - Animations
-- **Zustand** - State management
-- **Lucide Icons** - Icon library
-- **Vite** - Build tool
+- **React 19** + TypeScript 5
+- **Cytoscape.js** — Graph visualization (fcose layout)
+- **Zustand** — State management
+- **Vite** — Build tool
+- **Framer Motion** — Animations
+- **Lucide Icons** — Icon library
+- **marked** — Markdown compilation (build-time)
 
 ## Learn More
 
