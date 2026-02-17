@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
 import { useRoute } from '../hooks/useRoute';
-import { Moon, Sun, Database, Trophy, HelpCircle, FileJson, LayoutGrid, Sparkles, FileText, Share2, PenTool, BookOpen, Menu, X } from 'lucide-react';
+import { navigate } from '../lib/router';
+import { encodeSharePayload } from '../lib/shareCodec';
+import { serializeToRDF } from '../lib/rdf/serializer';
+import { Moon, Sun, Database, Trophy, HelpCircle, FileJson, LayoutGrid, Sparkles, FileText, Share2, PenTool, BookOpen, Menu, X, Download } from 'lucide-react';
 
 interface HeaderProps {
   onHelpClick: () => void;
@@ -15,9 +18,9 @@ interface HeaderProps {
 }
 
 export function Header({ onHelpClick, onDataSourcesClick, onImportExportClick, onGalleryClick, onDesignerClick, onLearnClick, onNLBuilderClick, onSummaryClick }: HeaderProps) {
-  const { darkMode, toggleDarkMode, totalPoints, earnedBadges, currentOntology } = useAppStore();
+  const { darkMode, toggleDarkMode, totalPoints, earnedBadges, currentOntology, dataBindings } = useAppStore();
   const route = useRoute();
-  const [copied, setCopied] = useState(false);
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copying' | 'copied' | 'downloaded'>('idle');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -25,14 +28,45 @@ export function Header({ onHelpClick, onDataSourcesClick, onImportExportClick, o
 
   const shareableId = route.page === 'catalogue' && route.ontologyId ? route.ontologyId : null;
 
-  const handleShare = () => {
-    if (!shareableId) return;
-    const url = `${window.location.origin}${window.location.pathname}#/catalogue/${shareableId}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+  const handleShare = async () => {
+    if (shareStatus === 'copying') return;
+
+    if (shareableId) {
+      // Catalogue ontology — use the short deep link
+      const url = `${window.location.origin}${window.location.pathname}#/catalogue/${shareableId}`;
+      await navigator.clipboard.writeText(url);
+      setShareStatus('copied');
+      setTimeout(() => setShareStatus('idle'), 2000);
+      return;
+    }
+
+    // Custom ontology — compress and encode into a share URL
+    setShareStatus('copying');
+    const encoded = await encodeSharePayload(currentOntology, dataBindings);
+    if (encoded) {
+      const url = `${window.location.origin}${window.location.pathname}#/share/${encoded}`;
+      await navigator.clipboard.writeText(url);
+      navigate({ page: 'share', data: encoded });
+      setShareStatus('copied');
+      setTimeout(() => setShareStatus('idle'), 2000);
+    } else {
+      // Too large for URL — download the RDF file instead
+      const content = serializeToRDF(currentOntology, dataBindings);
+      const blob = new Blob([content], { type: 'application/rdf+xml' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${currentOntology.name.toLowerCase().replace(/\s+/g, '-')}-ontology.rdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setShareStatus('downloaded');
+      setTimeout(() => setShareStatus('idle'), 3000);
+    }
   };
+
+  const shareLabel = shareStatus === 'copied' ? 'Copied!' : shareStatus === 'downloaded' ? 'Downloaded RDF' : shareStatus === 'copying' ? 'Encoding…' : 'Share';
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -78,17 +112,15 @@ export function Header({ onHelpClick, onDataSourcesClick, onImportExportClick, o
       </div>
 
       <div className="header-actions">
-        {shareableId && (
-          <button
-            className="header-text-btn"
-            onClick={handleShare}
-            title="Copy shareable link to this ontology"
-            style={copied ? { color: 'var(--ms-green, #107C10)' } : undefined}
-          >
-            <Share2 size={16} />
-            <span>{copied ? 'Copied!' : 'Share'}</span>
-          </button>
-        )}
+        <button
+          className="header-text-btn"
+          onClick={handleShare}
+          title={shareableId ? 'Copy shareable link to this ontology' : 'Share this ontology via link'}
+          style={shareStatus === 'copied' ? { color: 'var(--ms-green, #107C10)' } : shareStatus === 'downloaded' ? { color: 'var(--ms-blue, #0078D4)' } : undefined}
+        >
+          {shareStatus === 'downloaded' ? <Download size={16} /> : <Share2 size={16} />}
+          <span>{shareLabel}</span>
+        </button>
         <button className="header-text-btn" onClick={onSummaryClick} title="View Ontology Summary">
           <FileText size={16} />
           <span>Summary</span>
@@ -137,11 +169,9 @@ export function Header({ onHelpClick, onDataSourcesClick, onImportExportClick, o
               <span className="stat-value">{earnedBadges.length}</span>
               <span>badges</span>
             </div>
-            {shareableId && (
-              <button className="mobile-menu-item" onClick={menuAction(handleShare)}>
-                <Share2 size={18} /> {copied ? 'Copied!' : 'Share'}
-              </button>
-            )}
+            <button className="mobile-menu-item" onClick={menuAction(handleShare)}>
+              <Share2 size={18} /> {shareLabel}
+            </button>
             <button className="mobile-menu-item" onClick={menuAction(onSummaryClick)}>
               <FileText size={18} /> Summary
             </button>

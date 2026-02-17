@@ -25,6 +25,7 @@ import { useAppStore } from './store/appStore';
 import { useDesignerStore } from './store/designerStore';
 import { useRoute } from './hooks/useRoute';
 import { navigate } from './lib/router';
+import { decodeSharePayload } from './lib/shareCodec';
 import type { Catalogue } from './types/catalogue';
 import { Search, MessageSquare, Info, Compass, LayoutGrid, PenTool, BookOpen, FileJson, HelpCircle, Database, Sun, Moon, FileText } from 'lucide-react';
 import './styles/app.css';
@@ -86,6 +87,20 @@ function App() {
         .catch(() => {
           // On error, open gallery
           navigate({ page: 'catalogue' });
+        });
+    }
+  }, [route, loadOntology]);
+
+  // Deep-link: /#/share/<data> — decode an inline-shared ontology
+  useEffect(() => {
+    if (route.page === 'share' && route.data) {
+      decodeSharePayload(route.data)
+        .then(({ ontology, bindings }) => {
+          loadOntology(ontology, bindings);
+        })
+        .catch(() => {
+          // Corrupt or invalid share link — go home
+          navigate({ page: 'home' });
         });
     }
   }, [route, loadOntology]);

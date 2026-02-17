@@ -11,6 +11,7 @@
  *   /#/designer/<source>/<slug>                       → edit existing ontology
  *   /#/learn                                          → learning content index
  *   /#/learn/<slug>                                   → specific article
+ *   /#/share/<base64-data>                            → shared inline ontology
  */
 
 export type Route =
@@ -18,7 +19,8 @@ export type Route =
   | { page: 'catalogue'; ontologyId?: string }
   | { page: 'embed'; ontologyId: string }
   | { page: 'designer'; ontologyId?: string }
-  | { page: 'learn'; articleSlug?: string };
+  | { page: 'learn'; articleSlug?: string }
+  | { page: 'share'; data: string };
 
 /**
  * Validate and sanitize an ontology ID parsed from the URL hash.
@@ -76,6 +78,14 @@ export function parseHash(hash: string): Route {
     const sanitized = sanitizeOntologyId(slug);
     return { page: 'learn', articleSlug: sanitized };
   }
+  if (segments[0] === 'share' && segments.length === 2) {
+    const data = segments[1];
+    // Only allow URL-safe base64 characters: A-Z a-z 0-9 - _ = +
+    if (data && /^[A-Za-z0-9\-_=+/]+$/.test(data) && data.length <= 50000) {
+      return { page: 'share', data };
+    }
+    return { page: 'home' };
+  }
   return { page: 'home' };
 }
 
@@ -96,6 +106,8 @@ export function routeToHash(route: Route): string {
       return route.articleSlug
         ? `#/learn/${route.articleSlug}`
         : '#/learn';
+    case 'share':
+      return `#/share/${route.data}`;
     case 'home':
     default:
       return '#/';

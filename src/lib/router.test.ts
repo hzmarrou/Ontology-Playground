@@ -88,6 +88,25 @@ describe('parseHash', () => {
       articleSlug: undefined,
     });
   });
+
+  it('parses share route with valid base64 data', () => {
+    expect(parseHash('#/share/eJxLzs8FAAPcAbQ')).toEqual({
+      page: 'share',
+      data: 'eJxLzs8FAAPcAbQ',
+    });
+  });
+
+  it('returns home for share route without data', () => {
+    expect(parseHash('#/share')).toEqual({ page: 'home' });
+  });
+
+  it('returns home for share route with invalid characters', () => {
+    expect(parseHash('#/share/<script>alert(1)</script>')).toEqual({ page: 'home' });
+  });
+
+  it('returns home for share route with extra segments', () => {
+    expect(parseHash('#/share/abc/def')).toEqual({ page: 'home' });
+  });
   it('handles leading slash variations', () => {
     expect(parseHash('#catalogue/test')).toEqual({ page: 'catalogue', ontologyId: 'test' });
   });
@@ -200,6 +219,12 @@ describe('routeToHash', () => {
       '#/learn/what-is-an-ontology',
     );
   });
+
+  it('converts share route', () => {
+    expect(routeToHash({ page: 'share', data: 'eJxLzs8FAAPcAbQ' })).toBe(
+      '#/share/eJxLzs8FAAPcAbQ',
+    );
+  });
 });
 
 describe('roundtrip', () => {
@@ -213,6 +238,7 @@ describe('roundtrip', () => {
     { page: 'designer' as const, ontologyId: 'official/cosmic-coffee' },
     { page: 'learn' as const },
     { page: 'learn' as const, articleSlug: 'what-is-an-ontology' },
+    { page: 'share' as const, data: 'eJxLzs8FAAPcAbQ' },
   ];
 
   for (const route of routes) {
