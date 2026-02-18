@@ -10,9 +10,18 @@ export interface LearnArticle {
   html: string;
 }
 
+/** A course groups related articles into a learning path or hands-on lab. */
+export interface LearnCourse {
+  slug: string;
+  title: string;
+  description: string;
+  type: 'path' | 'lab';
+  icon: string;
+  articles: LearnArticle[];
+}
+
 /** The full learn manifest emitted by compile-learn.ts */
 export interface LearnManifest {
   generatedAt: string;
-  count: number;
-  articles: LearnArticle[];
+  courses: LearnCourse[];
 }

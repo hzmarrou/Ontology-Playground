@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
 import { useRoute } from '../hooks/useRoute';
-import { navigate } from '../lib/router';
+import { routeToHash } from '../lib/router';
 import { encodeSharePayload } from '../lib/shareCodec';
 import { serializeToRDF } from '../lib/rdf/serializer';
 import { Moon, Sun, Database, Trophy, HelpCircle, FileJson, LayoutGrid, Sparkles, FileText, Share2, PenTool, BookOpen, Menu, X, Download } from 'lucide-react';
@@ -46,7 +46,7 @@ export function Header({ onHelpClick, onDataSourcesClick, onImportExportClick, o
     if (encoded) {
       const url = `${window.location.origin}${window.location.pathname}#/share/${encoded}`;
       await navigator.clipboard.writeText(url);
-      navigate({ page: 'share', data: encoded });
+      history.replaceState(null, '', routeToHash({ page: 'share', data: encoded }));
       setShareStatus('copied');
       setTimeout(() => setShareStatus('idle'), 2000);
     } else {

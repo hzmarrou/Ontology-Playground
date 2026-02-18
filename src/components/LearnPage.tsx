@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { ArrowLeft, BookOpen, ChevronRight, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, BookOpen, ChevronRight, Sun, Moon, FlaskConical, GraduationCap } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { navigate } from '../lib/router';
 import type { Route } from '../lib/router';
-import type { LearnManifest, LearnArticle } from '../types/learn';
+import type { LearnManifest, LearnCourse, LearnArticle } from '../types/learn';
 import type { Catalogue } from '../types/catalogue';
 
 interface LearnPageProps {
@@ -16,10 +16,10 @@ export function LearnPage({ route }: LearnPageProps) {
   const [error, setError] = useState<string | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to top when navigating between articles
+  // Scroll to top when navigating
   useEffect(() => {
     pageRef.current?.scrollTo(0, 0);
-  }, [route.articleSlug]);
+  }, [route.courseSlug, route.articleSlug]);
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}learn.json`)
@@ -47,20 +47,38 @@ export function LearnPage({ route }: LearnPageProps) {
     );
   }
 
-  const article = route.articleSlug
-    ? manifest.articles.find((a) => a.slug === route.articleSlug)
+  const course = route.courseSlug
+    ? manifest.courses.find((c) => c.slug === route.courseSlug)
     : null;
+
+  const article = course && route.articleSlug
+    ? course.articles.find((a) => a.slug === route.articleSlug)
+    : null;
+
+  // Determine back button behavior
+  let backLabel: string;
+  let backAction: () => void;
+  if (article && course) {
+    backLabel = course.title;
+    backAction = () => navigate({ page: 'learn', courseSlug: course.slug });
+  } else if (course) {
+    backLabel = 'All courses';
+    backAction = () => navigate({ page: 'learn' });
+  } else {
+    backLabel = 'Playground';
+    backAction = () => navigate({ page: 'home' });
+  }
 
   return (
     <div ref={pageRef} className={`learn-page ${darkMode ? '' : 'light-theme'}`}>
       <header className="learn-header">
         <button
           className="learn-back-btn"
-          onClick={() => navigate(article ? { page: 'learn' } : { page: 'home' })}
-          title={article ? 'Back to articles' : 'Back to Playground'}
+          onClick={backAction}
+          title={`Back to ${backLabel}`}
         >
           <ArrowLeft size={20} />
-          <span>{article ? 'All articles' : 'Playground'}</span>
+          <span>{backLabel}</span>
         </button>
         <div className="learn-header-title">
           <BookOpen size={20} />
@@ -71,41 +89,92 @@ export function LearnPage({ route }: LearnPageProps) {
         </button>
       </header>
 
-      {article ? (
-        <ArticleView article={article} articles={manifest.articles} darkMode={darkMode} />
+      {article && course ? (
+        <ArticleView article={article} course={course} darkMode={darkMode} />
+      ) : course ? (
+        <CourseDetail course={course} />
       ) : (
-        <ArticleIndex articles={manifest.articles} />
+        <CourseCatalogue courses={manifest.courses} />
       )}
     </div>
   );
 }
 
 // -------------------------------------------------------------------
-// Article Index
+// Course Catalogue (top-level index)
 // -------------------------------------------------------------------
 
-function ArticleIndex({ articles }: { articles: LearnArticle[] }) {
+function CourseCatalogue({ courses }: { courses: LearnCourse[] }) {
   return (
     <div className="learn-index">
       <div className="learn-index-hero">
-        <h1>Learn Ontology Concepts</h1>
+        <h1>Learn</h1>
         <p>
-          From first principles to hands-on design — everything you need to
-          understand and build ontologies for Microsoft Fabric IQ.
+          Learning paths and hands-on labs to help you understand and build
+          ontologies for Microsoft Fabric IQ.
         </p>
       </div>
       <div className="learn-card-grid">
-        {articles.map((a) => (
+        {courses.map((c) => (
+          <button
+            key={c.slug}
+            className="learn-card"
+            onClick={() => navigate({ page: 'learn', courseSlug: c.slug })}
+          >
+            <div className="learn-card-header">
+              <span className="learn-card-icon">{c.icon}</span>
+              <span className={`learn-card-badge learn-card-badge--${c.type}`}>
+                {c.type === 'lab' ? <FlaskConical size={12} /> : <GraduationCap size={12} />}
+                {c.type === 'lab' ? 'Lab' : 'Path'}
+              </span>
+            </div>
+            <h2>{c.title}</h2>
+            <p>{c.description}</p>
+            <span className="learn-card-meta">
+              {c.articles.length} {c.type === 'lab' ? 'steps' : 'articles'}
+            </span>
+            <span className="learn-card-cta">
+              {c.type === 'lab' ? 'Start lab' : 'Start learning'} <ChevronRight size={16} />
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------------
+// Course Detail (article list within a course)
+// -------------------------------------------------------------------
+
+function CourseDetail({ course }: { course: LearnCourse }) {
+  return (
+    <div className="learn-index">
+      <div className="learn-index-hero">
+        <div className="learn-course-header">
+          <span className="learn-course-icon">{course.icon}</span>
+          <span className={`learn-card-badge learn-card-badge--${course.type}`}>
+            {course.type === 'lab' ? <FlaskConical size={12} /> : <GraduationCap size={12} />}
+            {course.type === 'lab' ? 'Lab' : 'Learning Path'}
+          </span>
+        </div>
+        <h1>{course.title}</h1>
+        <p>{course.description}</p>
+      </div>
+      <div className="learn-card-grid">
+        {course.articles.map((a) => (
           <button
             key={a.slug}
             className="learn-card"
-            onClick={() => navigate({ page: 'learn', articleSlug: a.slug })}
+            onClick={() => navigate({ page: 'learn', courseSlug: course.slug, articleSlug: a.slug })}
           >
-            <span className="learn-card-order">{a.order}</span>
+            <span className="learn-card-order">
+              {course.type === 'lab' ? `Step ${a.order}` : a.order}
+            </span>
             <h2>{a.title}</h2>
             <p>{a.description}</p>
             <span className="learn-card-cta">
-              Read article <ChevronRight size={16} />
+              {course.type === 'lab' ? 'Open step' : 'Read article'} <ChevronRight size={16} />
             </span>
           </button>
         ))}
@@ -120,22 +189,22 @@ function ArticleIndex({ articles }: { articles: LearnArticle[] }) {
 
 function ArticleView({
   article,
-  articles,
+  course,
   darkMode,
 }: {
   article: LearnArticle;
-  articles: LearnArticle[];
+  course: LearnCourse;
   darkMode: boolean;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   const nextArticle = useMemo(
-    () => articles.find((a) => a.order === article.order + 1),
-    [articles, article.order],
+    () => course.articles.find((a) => a.order === article.order + 1),
+    [course.articles, article.order],
   );
   const prevArticle = useMemo(
-    () => articles.find((a) => a.order === article.order - 1),
-    [articles, article.order],
+    () => course.articles.find((a) => a.order === article.order - 1),
+    [course.articles, article.order],
   );
 
   // Replace <ontology-embed> placeholders with live widgets
@@ -196,7 +265,7 @@ function ArticleView({
         {prevArticle ? (
           <button
             className="learn-nav-btn learn-nav-prev"
-            onClick={() => navigate({ page: 'learn', articleSlug: prevArticle.slug })}
+            onClick={() => navigate({ page: 'learn', courseSlug: course.slug, articleSlug: prevArticle.slug })}
           >
             <ArrowLeft size={16} />
             <div>
@@ -210,7 +279,7 @@ function ArticleView({
         {nextArticle && (
           <button
             className="learn-nav-btn learn-nav-next"
-            onClick={() => navigate({ page: 'learn', articleSlug: nextArticle.slug })}
+            onClick={() => navigate({ page: 'learn', courseSlug: course.slug, articleSlug: nextArticle.slug })}
           >
             <div>
               <span className="learn-nav-label">Next</span>

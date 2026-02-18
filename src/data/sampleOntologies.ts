@@ -5,7 +5,7 @@ export interface SampleOntologyEntry {
   name: string;
   description: string;
   icon: string;
-  category: 'retail' | 'healthcare' | 'finance' | 'manufacturing' | 'education';
+  category: 'retail' | 'healthcare' | 'finance' | 'manufacturing' | 'education' | 'iq-lab';
   ontology: Ontology;
   bindings: DataBinding[];
 }
@@ -489,7 +489,8 @@ export const categoryLabels: Record<string, string> = {
   healthcare: "Healthcare",
   finance: "Finance",
   manufacturing: "Manufacturing",
-  education: "Education"
+  education: "Education",
+  'iq-lab': "IQ Lab"
 };
 
 export const categoryColors: Record<string, string> = {
@@ -497,5 +498,6 @@ export const categoryColors: Record<string, string> = {
   healthcare: "#D13438",
   finance: "#107C10",
   manufacturing: "#FFB900",
-  education: "#8764B8"
+  education: "#8764B8",
+  'iq-lab': "#0099BC"
 };

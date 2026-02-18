@@ -2689,13 +2689,15 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
+  min-width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: 14px;
+  padding: 0 10px;
   background: var(--ms-blue);
   color: #fff;
-  font: 700 13px/1 var(--font-primary);
+  font: 700 12px/1 var(--font-primary);
   margin-bottom: 12px;
+  white-space: nowrap;
 }
 
 .learn-card h2 {
@@ -2712,6 +2714,44 @@ body {
   padding-bottom: 16px;
 }
 
+.learn-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.learn-card-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.learn-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 11px/1 var(--font-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+.learn-card-badge--lab {
+  background: rgba(180, 0, 158, 0.12);
+  color: #B4009E;
+}
+.learn-card-badge--path {
+  background: rgba(0, 120, 212, 0.12);
+  color: var(--ms-blue);
+}
+
+.learn-card-meta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+
 .learn-card-cta {
   display: flex;
   align-items: center;
@@ -2719,6 +2759,21 @@ body {
   color: var(--ms-blue);
   font: 500 13px/1 var(--font-primary);
   margin-top: 8px;
+}
+
+/* --- Course detail header --- */
+
+.learn-course-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.learn-course-icon {
+  font-size: 36px;
+  line-height: 1;
 }
 
 /* --- Article view --- */

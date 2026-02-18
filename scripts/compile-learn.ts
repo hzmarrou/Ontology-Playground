@@ -1,15 +1,26 @@
 /**
  * Build-time learning content compiler.
  *
- * Reads all content/learn/*.md files, parses frontmatter + Markdown,
- * and emits public/learn.json.
+ * Scans content/learn/<course-dir>/ subdirectories, reads _meta.md for
+ * course metadata and *.md files for articles, and emits public/learn.json.
+ *
+ * Directory layout:
+ *   content/learn/
+ *     ontology-fundamentals/
+ *       _meta.md            ← course metadata (title, slug, type, icon)
+ *       01-what-is-an-ontology.md
+ *       02-understanding-rdf.md
+ *     iq-lab-retail-supply-chain/
+ *       _meta.md
+ *       01-scenario-overview.md
+ *       ...
  *
  * Usage: npx tsx scripts/compile-learn.ts
  */
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { marked } from 'marked';
-import type { LearnArticle, LearnManifest } from '../src/types/learn.js';
+import type { LearnArticle, LearnCourse, LearnManifest } from '../src/types/learn.js';
 
 const ROOT = join(import.meta.dirname, '..');
 const CONTENT_DIR = join(ROOT, 'content', 'learn');
@@ -19,7 +30,7 @@ const OUTPUT_PATH = join(ROOT, 'public', 'learn.json');
 // Frontmatter parser (simple YAML-like key: value)
 // ------------------------------------------------------------------
 
-interface Frontmatter {
+interface ArticleFrontmatter {
   title: string;
   slug: string;
   description: string;
@@ -27,9 +38,19 @@ interface Frontmatter {
   embed?: string;
 }
 
-const REQUIRED_FIELDS = ['title', 'slug', 'description', 'order'] as const;
+interface CourseFrontmatter {
+  title: string;
+  slug: string;
+  description: string;
+  type: 'path' | 'lab';
+  icon: string;
+}
 
-function parseFrontmatter(content: string, filePath: string): { meta: Frontmatter; body: string } {
+function parseFrontmatter<T extends Record<string, string>>(
+  content: string,
+  filePath: string,
+  requiredFields: readonly string[],
+): { meta: T; body: string } {
   if (!content.startsWith('---')) {
     throw new Error(`${filePath}: missing frontmatter (must start with ---)`);
   }
@@ -49,75 +70,123 @@ function parseFrontmatter(content: string, filePath: string): { meta: Frontmatte
     meta[key] = value;
   }
 
-  for (const field of REQUIRED_FIELDS) {
+  for (const field of requiredFields) {
     if (!meta[field]) {
       throw new Error(`${filePath}: missing required frontmatter field "${field}"`);
     }
   }
 
-  const order = parseInt(meta['order'], 10);
-  if (isNaN(order)) {
-    throw new Error(`${filePath}: "order" must be a number`);
-  }
-
-  return {
-    meta: {
-      title: meta['title'],
-      slug: meta['slug'],
-      description: meta['description'],
-      order,
-      embed: meta['embed'] || undefined,
-    },
-    body,
-  };
+  return { meta: meta as T, body };
 }
 
 // ------------------------------------------------------------------
 // Main
 // ------------------------------------------------------------------
 
+const COURSE_REQUIRED = ['title', 'slug', 'description', 'type', 'icon'] as const;
+const ARTICLE_REQUIRED = ['title', 'slug', 'description', 'order'] as const;
+
 function compile(): LearnManifest {
-  const articles: LearnArticle[] = [];
+  const courses: LearnCourse[] = [];
   let errors = 0;
 
-  const files = readdirSync(CONTENT_DIR)
-    .filter((f) => f.endsWith('.md'))
+  // Discover course directories
+  const dirs = readdirSync(CONTENT_DIR)
+    .filter((d) => {
+      const full = join(CONTENT_DIR, d);
+      return statSync(full).isDirectory();
+    })
     .sort();
 
-  for (const file of files) {
-    const filePath = join(CONTENT_DIR, file);
-    try {
-      const content = readFileSync(filePath, 'utf-8');
-      const { meta, body } = parseFrontmatter(content, filePath);
-      const html = marked.parse(body, { async: false }) as string;
+  for (const dirName of dirs) {
+    const courseDir = join(CONTENT_DIR, dirName);
+    const metaPath = join(courseDir, '_meta.md');
 
-      articles.push({
-        slug: meta.slug,
-        title: meta.title,
-        description: meta.description,
-        order: meta.order,
-        embed: meta.embed,
-        html,
-      });
-
-      console.log(`✔ ${meta.slug}`);
-    } catch (e) {
-      console.error(`✘ ${file}: ${(e as Error).message}`);
+    if (!existsSync(metaPath)) {
+      console.error(`✘ ${dirName}/: missing _meta.md`);
       errors++;
+      continue;
     }
+
+    // Parse course metadata
+    let courseMeta: CourseFrontmatter;
+    try {
+      const metaContent = readFileSync(metaPath, 'utf-8');
+      const parsed = parseFrontmatter<Record<string, string>>(metaContent, metaPath, COURSE_REQUIRED);
+      courseMeta = {
+        title: parsed.meta['title'],
+        slug: parsed.meta['slug'],
+        description: parsed.meta['description'],
+        type: parsed.meta['type'] as 'path' | 'lab',
+        icon: parsed.meta['icon'],
+      };
+      if (courseMeta.type !== 'path' && courseMeta.type !== 'lab') {
+        throw new Error(`${metaPath}: "type" must be "path" or "lab"`);
+      }
+    } catch (e) {
+      console.error(`✘ ${metaPath}: ${(e as Error).message}`);
+      errors++;
+      continue;
+    }
+
+    // Parse articles in this course
+    const articles: LearnArticle[] = [];
+    const files = readdirSync(courseDir)
+      .filter((f) => f.endsWith('.md') && f !== '_meta.md')
+      .sort();
+
+    for (const file of files) {
+      const filePath = join(courseDir, file);
+      try {
+        const content = readFileSync(filePath, 'utf-8');
+        const { meta, body } = parseFrontmatter<Record<string, string>>(
+          content,
+          filePath,
+          ARTICLE_REQUIRED,
+        );
+        const order = parseInt(meta['order'], 10);
+        if (isNaN(order)) {
+          throw new Error(`${filePath}: "order" must be a number`);
+        }
+        const html = marked.parse(body, { async: false }) as string;
+
+        articles.push({
+          slug: meta['slug'],
+          title: meta['title'],
+          description: meta['description'],
+          order,
+          embed: meta['embed'] || undefined,
+          html,
+        });
+
+        console.log(`  ✔ ${courseMeta.slug}/${meta['slug']}`);
+      } catch (e) {
+        console.error(`  ✘ ${file}: ${(e as Error).message}`);
+        errors++;
+      }
+    }
+
+    articles.sort((a, b) => a.order - b.order);
+
+    courses.push({
+      slug: courseMeta.slug,
+      title: courseMeta.title,
+      description: courseMeta.description,
+      type: courseMeta.type,
+      icon: courseMeta.icon,
+      articles,
+    });
+
+    console.log(`✔ ${courseMeta.slug} (${articles.length} articles)`);
   }
 
   if (errors > 0) {
     throw new Error(`Learn content compilation failed with ${errors} error(s)`);
   }
 
-  // Sort by order
-  articles.sort((a, b) => a.order - b.order);
-
   return {
     generatedAt: new Date().toISOString(),
-    count: articles.length,
-    articles,
+    courses,
   };
 }
 
@@ -127,8 +196,9 @@ function compile(): LearnManifest {
 
 try {
   const manifest = compile();
+  const totalArticles = manifest.courses.reduce((sum, c) => sum + c.articles.length, 0);
   writeFileSync(OUTPUT_PATH, JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
-  console.log(`\n✔ Wrote ${manifest.count} articles to ${OUTPUT_PATH}`);
+  console.log(`\n✔ Wrote ${manifest.courses.length} courses (${totalArticles} articles) to ${OUTPUT_PATH}`);
 } catch (e) {
   console.error(`\n${(e as Error).message}`);
   process.exit(1);

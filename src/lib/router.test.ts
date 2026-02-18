@@ -72,19 +72,37 @@ describe('parseHash', () => {
     });
   });
   it('parses learn route without slug', () => {
-    expect(parseHash('#/learn')).toEqual({ page: 'learn', articleSlug: undefined });
+    expect(parseHash('#/learn')).toEqual({ page: 'learn', courseSlug: undefined, articleSlug: undefined });
   });
 
-  it('parses learn route with slug', () => {
-    expect(parseHash('#/learn/what-is-an-ontology')).toEqual({
+  it('parses learn route with course slug only', () => {
+    expect(parseHash('#/learn/ontology-fundamentals')).toEqual({
       page: 'learn',
+      courseSlug: 'ontology-fundamentals',
+      articleSlug: undefined,
+    });
+  });
+
+  it('parses learn route with course and article slug', () => {
+    expect(parseHash('#/learn/ontology-fundamentals/what-is-an-ontology')).toEqual({
+      page: 'learn',
+      courseSlug: 'ontology-fundamentals',
       articleSlug: 'what-is-an-ontology',
     });
   });
 
-  it('rejects learn route with path traversal', () => {
+  it('rejects learn route with path traversal in course', () => {
     expect(parseHash('#/learn/../../etc/passwd')).toEqual({
       page: 'learn',
+      courseSlug: undefined,
+      articleSlug: undefined,
+    });
+  });
+
+  it('rejects learn route with path traversal in article', () => {
+    expect(parseHash('#/learn/good-course/../../etc')).toEqual({
+      page: 'learn',
+      courseSlug: 'good-course',
       articleSlug: undefined,
     });
   });
@@ -214,9 +232,15 @@ describe('routeToHash', () => {
     expect(routeToHash({ page: 'learn' })).toBe('#/learn');
   });
 
-  it('converts learn route with slug', () => {
-    expect(routeToHash({ page: 'learn', articleSlug: 'what-is-an-ontology' })).toBe(
-      '#/learn/what-is-an-ontology',
+  it('converts learn route with course slug', () => {
+    expect(routeToHash({ page: 'learn', courseSlug: 'ontology-fundamentals' })).toBe(
+      '#/learn/ontology-fundamentals',
+    );
+  });
+
+  it('converts learn route with course and article slug', () => {
+    expect(routeToHash({ page: 'learn', courseSlug: 'ontology-fundamentals', articleSlug: 'what-is-an-ontology' })).toBe(
+      '#/learn/ontology-fundamentals/what-is-an-ontology',
     );
   });
 
@@ -237,7 +261,8 @@ describe('roundtrip', () => {
     { page: 'designer' as const },
     { page: 'designer' as const, ontologyId: 'official/cosmic-coffee' },
     { page: 'learn' as const },
-    { page: 'learn' as const, articleSlug: 'what-is-an-ontology' },
+    { page: 'learn' as const, courseSlug: 'ontology-fundamentals' },
+    { page: 'learn' as const, courseSlug: 'ontology-fundamentals', articleSlug: 'what-is-an-ontology' },
     { page: 'share' as const, data: 'eJxLzs8FAAPcAbQ' },
   ];
 

@@ -9,8 +9,9 @@
  *   /#/embed/<source>/<slug>                         → full-page embed view
  *   /#/designer                                       → new blank ontology
  *   /#/designer/<source>/<slug>                       → edit existing ontology
- *   /#/learn                                          → learning content index
- *   /#/learn/<slug>                                   → specific article
+ *   /#/learn                                          → course catalogue
+ *   /#/learn/<course>                                 → course detail page
+ *   /#/learn/<course>/<article>                       → article within a course
  *   /#/share/<base64-data>                            → shared inline ontology
  */
 
@@ -19,7 +20,7 @@ export type Route =
   | { page: 'catalogue'; ontologyId?: string }
   | { page: 'embed'; ontologyId: string }
   | { page: 'designer'; ontologyId?: string }
-  | { page: 'learn'; articleSlug?: string }
+  | { page: 'learn'; courseSlug?: string; articleSlug?: string }
   | { page: 'share'; data: string };
 
 /**
@@ -73,10 +74,12 @@ export function parseHash(hash: string): Route {
     return { page: 'designer', ontologyId: id };
   }
   if (segments[0] === 'learn') {
-    const slug = segments[1];
-    if (!slug) return { page: 'learn' };
-    const sanitized = sanitizeOntologyId(slug);
-    return { page: 'learn', articleSlug: sanitized };
+    if (segments.length === 1) return { page: 'learn' };
+    const courseSlug = sanitizeOntologyId(segments[1]);
+    if (!courseSlug) return { page: 'learn' };
+    if (segments.length === 2) return { page: 'learn', courseSlug };
+    const articleSlug = sanitizeOntologyId(segments[2]);
+    return { page: 'learn', courseSlug, articleSlug };
   }
   if (segments[0] === 'share' && segments.length === 2) {
     const data = segments[1];
@@ -103,9 +106,10 @@ export function routeToHash(route: Route): string {
         ? `#/designer/${route.ontologyId}`
         : '#/designer';
     case 'learn':
-      return route.articleSlug
-        ? `#/learn/${route.articleSlug}`
-        : '#/learn';
+      if (route.courseSlug && route.articleSlug)
+        return `#/learn/${route.courseSlug}/${route.articleSlug}`;
+      if (route.courseSlug) return `#/learn/${route.courseSlug}`;
+      return '#/learn';
     case 'share':
       return `#/share/${route.data}`;
     case 'home':
