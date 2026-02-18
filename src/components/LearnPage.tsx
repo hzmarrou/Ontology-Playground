@@ -318,14 +318,10 @@ interface EmbedOntology {
 
 type EmbedEntry = { name: string; ontology: EmbedOntology };
 
-/** Shared chessboard background CSS (mirrors .graph-container in app.css) */
+/** Shared chessboard background CSS (mirrors .graph-container in app.css) — fully opaque */
 function applyChessboardBg(el: HTMLElement, darkMode: boolean) {
-  const dark = darkMode
-    ? 'rgba(20, 30, 50, 0.85)'
-    : 'rgba(220, 230, 245, 0.8)';
-  const light = darkMode
-    ? 'rgba(30, 50, 80, 0.65)'
-    : 'rgba(240, 245, 255, 0.9)';
+  const dark = darkMode ? '#0F1625' : '#DAE2F0';
+  const light = darkMode ? '#1A2840' : '#EEF2FB';
   el.style.backgroundImage = [
     `linear-gradient(45deg, ${dark} 25%, transparent 25%)`,
     `linear-gradient(-45deg, ${dark} 25%, transparent 25%)`,
@@ -398,19 +394,26 @@ function cyStyles(colors: { nodeText: string; edgeColor: string; edgeText: strin
   ];
 }
 
-/** Mount a Cytoscape instance into a container div */
+/** Mount a Cytoscape instance into a container div.
+ *  If `fixedPositions` is provided, nodes with matching IDs use preset positions
+ *  and only new nodes go through fcose layout. Returns a promise with the cy instance. */
 function mountGraph(
   container: HTMLElement,
   entry: EmbedEntry,
   darkMode: boolean,
   newEntityIds?: Set<string>,
   newRelIds?: Set<string>,
-) {
+  fixedPositions?: Map<string, { x: number; y: number }>,
+): Promise<CyInstance> {
   const newHighlight = '#00C853';
-  const nodes = entry.ontology.entityTypes.map((e) => ({
-    data: { id: e.id, label: `${e.icon} ${e.name}`, color: e.color },
-    classes: newEntityIds?.has(e.id) ? 'new' : '',
-  }));
+  const nodes = entry.ontology.entityTypes.map((e) => {
+    const pos = fixedPositions?.get(e.id);
+    return {
+      data: { id: e.id, label: `${e.icon} ${e.name}`, color: e.color },
+      classes: newEntityIds?.has(e.id) ? 'new' : '',
+      ...(pos ? { position: { x: pos.x, y: pos.y } } : {}),
+    };
+  });
   const edges = entry.ontology.relationships.map((r) => ({
     data: { id: r.id, source: r.from, target: r.to, label: r.name },
     classes: newRelIds?.has(r.id) ? 'new' : '',
@@ -420,30 +423,56 @@ function mountGraph(
     ? { nodeText: '#B3B3B3', edgeColor: '#505050', edgeText: '#808080' }
     : { nodeText: '#2A2A2A', edgeColor: '#888888', edgeText: '#555555' };
 
-  import('cytoscape').then(({ default: cytoscape }) => {
+  return import('cytoscape').then(({ default: cytoscape }) =>
     import('cytoscape-fcose').then(({ default: fcose }) => {
       cytoscape.use(fcose);
-      cytoscape({
+
+      // If we have fixed positions for some nodes, use fcose with constraints
+      // so that pinned nodes stay put and only new nodes get laid out
+      const usePreset = fixedPositions && fixedPositions.size > 0;
+      const layoutCfg = usePreset
+        ? {
+            name: 'fcose',
+            animate: false,
+            fit: true,
+            padding: 30,
+            nodeDimensionsIncludeLabels: true,
+            fixedNodeConstraint: Array.from(fixedPositions!.entries()).map(
+              ([id, pos]) => ({ nodeId: id, position: { x: pos.x, y: pos.y } }),
+            ),
+          }
+        : {
+            name: 'fcose',
+            animate: false,
+            fit: true,
+            padding: 30,
+            nodeDimensionsIncludeLabels: true,
+          };
+
+      const cy = cytoscape({
         container,
         elements: [...nodes, ...edges],
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         style: cyStyles(colors, newHighlight) as any,
-        layout: {
-          name: 'fcose',
-          animate: false,
-          fit: true,
-          padding: 30,
-          nodeDimensionsIncludeLabels: true,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        layout: layoutCfg as any,
         minZoom: 0.3,
         maxZoom: 3,
         userPanningEnabled: true,
         userZoomingEnabled: true,
         boxSelectionEnabled: false,
       });
-    });
-  });
+      return cy;
+    }),
+  );
+}
+
+// Minimal Cytoscape instance type (avoids importing full types)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface CyInstance {
+  nodes: () => { forEach: (fn: (n: { id: () => string; position: () => { x: number; y: number } }) => void) => void };
+  resize: () => void;
+  fit: (...args: any[]) => void;
 }
 
 function renderEmbedSlot(
@@ -492,9 +521,21 @@ function renderEmbedSlot(
   let activeView: 'after' | 'before' = 'after';
   let beforeBtn: HTMLButtonElement | undefined;
   let afterBtn: HTMLButtonElement | undefined;
-  const graphContainer = document.createElement('div');
+
+  // Pre-built graph containers (created once, toggled via display)
+  const afterDiv = document.createElement('div');
+  afterDiv.style.cssText = 'width:100%;height:100%;position:absolute;inset:0';
+  applyChessboardBg(afterDiv, darkMode);
+
+  let beforeDiv: HTMLDivElement | undefined;
+  let afterCy: CyInstance | undefined;
+  let beforeCy: CyInstance | undefined;
 
   if (hasDiff) {
+    beforeDiv = document.createElement('div');
+    beforeDiv.style.cssText = 'width:100%;height:100%;position:absolute;inset:0;display:none';
+    applyChessboardBg(beforeDiv, darkMode);
+
     const toggleGroup = document.createElement('span');
     toggleGroup.style.cssText = 'display:inline-flex;border-radius:4px;overflow:hidden;border:1px solid ' + borderColor + ';flex-shrink:0';
 
@@ -506,7 +547,7 @@ function renderEmbedSlot(
         if (activeView === value) return;
         activeView = value;
         updateToggleStyles();
-        renderActiveGraph();
+        showActiveView();
       });
       return btn;
     };
@@ -535,7 +576,6 @@ function renderEmbedSlot(
       slot.classList.remove('learn-embed-fullscreen');
       slot.style.height = savedHeight;
     }
-    // Re-apply inline styles that classList doesn't cover
     slot.style.borderRadius = isFullscreen ? '0' : '8px';
     slot.style.border = isFullscreen ? 'none' : `1px solid ${borderColor}`;
     slot.style.overflow = 'hidden';
@@ -547,18 +587,25 @@ function renderEmbedSlot(
     } else {
       maximizeBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
     }
-    renderActiveGraph();
+    // Resize both graphs to fit new container size
+    requestAnimationFrame(() => {
+      if (afterCy) { afterCy.resize(); afterCy.fit(30); }
+      if (beforeCy) { beforeCy.resize(); beforeCy.fit(30); }
+    });
   });
   titleBar.appendChild(maximizeBtn);
   slot.appendChild(titleBar);
 
-  // ── Graph area ─────────────────────────────────────────────────
+  // ── Graph area (both views stacked absolutely) ─────────────────
+  const graphContainer = document.createElement('div');
   graphContainer.style.cssText = 'flex:1;width:100%;min-height:0;position:relative';
+  graphContainer.appendChild(afterDiv);
+  if (beforeDiv) graphContainer.appendChild(beforeDiv);
   slot.appendChild(graphContainer);
 
   function updateToggleStyles() {
     if (!beforeBtn || !afterBtn) return;
-    const activeBg = darkMode ? '#0078D4' : '#0078D4';
+    const activeBg = '#0078D4';
     const inactiveBg = darkMode ? '#2D2D2D' : '#FFFFFF';
     const activeCol = '#FFFFFF';
     const inactiveCol = darkMode ? '#888' : '#666';
@@ -568,20 +615,33 @@ function renderEmbedSlot(
     afterBtn.style.color = activeView === 'after' ? activeCol : inactiveCol;
   }
 
-  function renderActiveGraph() {
-    graphContainer.innerHTML = '';
-    const graphDiv = document.createElement('div');
-    graphDiv.style.cssText = 'width:100%;height:100%';
-    applyChessboardBg(graphDiv, darkMode);
-    graphContainer.appendChild(graphDiv);
-
-    if (activeView === 'before' && prevEntry) {
-      mountGraph(graphDiv, prevEntry, darkMode);
-    } else {
-      mountGraph(graphDiv, entry, darkMode, newEntityIds, newRelIds);
-    }
+  function showActiveView() {
+    afterDiv.style.display = activeView === 'after' ? '' : 'none';
+    if (beforeDiv) beforeDiv.style.display = activeView === 'before' ? '' : 'none';
+    // Resize the now-visible graph so it fills correctly
+    requestAnimationFrame(() => {
+      if (activeView === 'after' && afterCy) { afterCy.resize(); afterCy.fit(30); }
+      if (activeView === 'before' && beforeCy) { beforeCy.resize(); beforeCy.fit(30); }
+    });
   }
 
   updateToggleStyles();
-  renderActiveGraph();
+
+  // Mount the "after" graph first, then use its positions to pin shared nodes in "before"
+  mountGraph(afterDiv, entry, darkMode, newEntityIds, newRelIds).then((cy) => {
+    afterCy = cy;
+
+    if (!prevEntry || !beforeDiv) return;
+
+    // Extract node positions from the after graph
+    const afterPositions = new Map<string, { x: number; y: number }>();
+    cy.nodes().forEach((n) => {
+      afterPositions.set(n.id(), n.position());
+    });
+
+    // Mount the "before" graph with shared nodes pinned to after-positions
+    mountGraph(beforeDiv, prevEntry, darkMode, undefined, undefined, afterPositions).then((bcy) => {
+      beforeCy = bcy;
+    });
+  });
 }
