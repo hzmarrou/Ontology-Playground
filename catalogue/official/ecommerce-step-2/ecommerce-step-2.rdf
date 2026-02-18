@@ -38,7 +38,7 @@
   </owl:Class>
 
   <owl:Class rdf:about="ShoppingCart">
-    <rdfs:label>Shopping Cart</rdfs:label>
+    <rdfs:label>ShoppingCart</rdfs:label>
     <rdfs:comment>A temporary collection of products a buyer intends to purchase.</rdfs:comment>
     <ont:icon>🛍️</ont:icon>
     <ont:color>#FFB900</ont:color>
