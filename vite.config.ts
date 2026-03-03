@@ -1,10 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+function resolveBasePath(): string {
+  if (process.env.VITE_BASE_PATH) return process.env.VITE_BASE_PATH;
+
+  // In GitHub Actions, derive Pages base from owner/repo when not explicitly provided.
+  if (process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_REPOSITORY) {
+    const [, repoName] = process.env.GITHUB_REPOSITORY.split('/');
+    if (repoName) return `/${repoName}/`;
+  }
+
+  return '/';
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: process.env.VITE_BASE_PATH || '/',
+  base: resolveBasePath(),
   build: {
     outDir: 'build',
     chunkSizeWarningLimit: 900,
