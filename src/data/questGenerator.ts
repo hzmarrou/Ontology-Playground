@@ -160,6 +160,7 @@ export function generateQuestsForOntology(ontology: Ontology): Quest[] {
           id: `step-4-${propSteps.length + 1}`,
           instruction: `Find the identifier property '${identifierProp.name}' in ${entity.name}`,
           targetType: 'property',
+          targetId: identifierProp.name,
           hint: `Look for the key icon 🔑 marking the identifier`
         });
       }
