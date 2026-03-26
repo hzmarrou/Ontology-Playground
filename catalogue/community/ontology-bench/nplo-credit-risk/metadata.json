@@ -1,0 +1,8 @@
+{
+  "name": "NPLO Credit Risk",
+  "description": "Non-Performing Loan Ontology (NPLO) for credit risk management, aligned with European Banking Authority NPL Data Templates. 14 entities, 20 relationships covering borrowers, loans, collateral, forbearance, enforcement, and external collection.",
+  "icon": "🏛️",
+  "category": "finance",
+  "tags": ["credit-risk", "nplo", "eba", "non-performing-loans", "banking", "fabric-ontology", "owl"],
+  "author": "ontology-bench"
+}
